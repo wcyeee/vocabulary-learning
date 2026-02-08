@@ -6,10 +6,12 @@ import { calculateNextReview, getDueCards, shuffleArray } from '../utils/srmAlgo
 import { motion, AnimatePresence } from 'framer-motion'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
 import SpeakButton from '../components/SpeakButton'
+import { useSpeech } from '../hooks/useSpeech'
 
 export default function Quiz() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { speak } = useSpeech()
   
   const [notebooks, setNotebooks] = useState([])
   const [selectedNotebooks, setSelectedNotebooks] = useState(location.state?.selectedNotebooks || [])
@@ -34,7 +36,13 @@ export default function Quiz() {
   const handleKeyPress = (e) => {
     // 只在測驗進行中且卡片已翻開時啟用
     if (!quizStarted || quizComplete) return
-    
+
+    // V 鍵發音（隨時可用）
+    if (e.code === 'KeyV') {
+      e.preventDefault()
+      speak(cards[currentIndex].english)
+    }
+
     // 空白鍵翻牌
     if (e.code === 'Space') {
       e.preventDefault()
