@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { collection, getDocs, doc, updateDoc, query, where  } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 import { calculateNextReview, getDueCards, shuffleArray } from '../utils/srmAlgorithm'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
@@ -69,13 +70,8 @@ export default function Quiz() {
 }, [quizStarted, quizComplete, isFlipped, currentIndex])
 
   const fetchNotebooks = async () => {
-    const { data, error } = await supabase
-      .from('notebooks')
-      .select('id, name')
-
-    if (!error && data) {
-      setNotebooks(data)
-    }
+    const snapshot = await getDocs(collection(db, 'notebooks'))
+    setNotebooks(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
   }
 
   const startQuiz = async () => {
@@ -83,76 +79,58 @@ export default function Quiz() {
       alert('Please select at least one notebook')
       return
     }
-
-    // Fetch cards from selected notebooks
-    const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .in('notebook_id', selectedNotebooks)
-
-    if (error) {
-      console.error('Error fetching cards:', error)
-      return
+    let allCards = []
+    for (const notebookId of selectedNotebooks) {
+      const snapshot = await getDocs(collection(db, 'notebooks', notebookId, 'cards'))
+      
+      // 修正：在對應資料時，手動幫卡片加上 notebook_id 屬性
+      const cards = snapshot.docs.map(d => ({ 
+        id: d.id, 
+        notebook_id: notebookId, 
+        ...d.data() 
+      }))
+      allCards = [...allCards, ...cards]
     }
-
-    // Get only due cards and shuffle
-    const dueCards = getDueCards(data || [])
+    const dueCards = getDueCards(allCards)
     const shuffled = shuffleArray(dueCards)
-    
     if (shuffled.length === 0) {
       alert('No cards due for review!')
       return
     }
-
     setCards(shuffled)
     setQuizStarted(true)
   }
 
   const handleAction = async (action) => {
     const currentCard = cards[currentIndex]
-    
+
     if (action === 'again') {
-      // Add card to end of current session
       setCards([...cards, currentCard])
-      // Track that this card needed review
-      setSessionResults(prev => ({
-        ...prev,
-        again: [...prev.again, currentCard]
-      }))
+      setSessionResults(prev => ({ ...prev, again: [...prev.again, currentCard] }))
     } else {
-      // Calculate next review and update DB
       const updates = calculateNextReview(currentCard, action)
-      
-      await supabase
-        .from('cards')
-        .update(updates)
-        .eq('id', currentCard.id)
-      
-      // Track result
+      await updateDoc(
+        doc(db, 'notebooks', currentCard.notebook_id, 'cards', currentCard.id),
+        updates
+      )
       setSessionResults(prev => ({
         ...prev,
         [action]: [...prev[action], { ...currentCard, ...updates }]
       }))
     }
 
-    // Move to next card
     setIsFlipped(false)
 
     if (currentIndex + 1 < cards.length) {
       setCurrentIndex(currentIndex + 1)
-      setIsFlipped(false)
     } else {
-      // Quiz complete - 更新所有相關 notebook 的 last_tested_at
-      const uniqueNotebookIds = [...new Set(cards.map(card => card.notebook_id))]
-      
-      // 批次更新所有測驗過的 notebook
+      // Update last_tested_at for all notebooks
+      const uniqueNotebookIds = [...new Set(cards.map(c => c.notebook_id))]
       for (const notebookId of uniqueNotebookIds) {
-        await supabase
-          .from('notebooks')
-          .update({ last_tested_at: new Date().toISOString() })
-          .eq('id', notebookId)
+        await updateDoc(doc(db, 'notebooks', currentCard.notebook_id), {
+          last_tested_at: new Date().toISOString()
+        })
       }
-      // Quiz complete
       setQuizComplete(true)
     }
   }

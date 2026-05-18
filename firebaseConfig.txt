@@ -1,0 +1,8 @@
+const firebaseConfig = {
+  apiKey: "AIzaSyAPBvNxA5S_fY2goevxfMS9x0h6MXqN4s4",
+  authDomain: "volcabulary-learning.firebaseapp.com",
+  projectId: "volcabulary-learning",
+  storageBucket: "volcabulary-learning.firebasestorage.app",
+  messagingSenderId: "316246832877",
+  appId: "1:316246832877:web:4f120479d87d6fefb43ee4"
+};

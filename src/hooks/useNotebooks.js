@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import {
+  collection, doc, addDoc, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, getDocs
+} from 'firebase/firestore'
+import { db } from '../lib/firebase'
 
 export function useNotebooks() {
   const [notebooks, setNotebooks] = useState([])
@@ -7,53 +11,53 @@ export function useNotebooks() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetchNotebooks()
-  }, [])
+    const q = query(collection(db, 'notebooks'), orderBy('createdAt', 'desc'))
+    
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      try {
+        // 使用 Promise.all 同步並行處理所有筆記本的子集合查詢，避免卡住
+        const notebooksPromises = snapshot.docs.map(async (docSnap) => {
+          const notebook = { id: docSnap.id, ...docSnap.data() }
+          
+          // Fetch cards subcollection for stats
+          const cardsSnap = await getDocs(collection(db, 'notebooks', docSnap.id, 'cards'))
+          const cards = cardsSnap.docs.map(d => d.data())
+          
+          notebook.total_cards = cards.length
+          notebook.normal_cards = cards.filter(c => c.status === 'normal').length
+          notebook.familiar_cards = cards.filter(c => c.status === 'familiar').length
+          
+          return notebook
+        })
 
-  const fetchNotebooks = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('notebooks')
-        .select(`
-          *,
-          cards (
-            id,
-            status
-          )
-        `)
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
+        const notebooksData = await Promise.all(notebooksPromises)
 
-      if (error) throw error
-
-      // Add stats to each notebook
-      const notebooksWithStats = data.map(notebook => ({
-        ...notebook,
-        total_cards: notebook.cards?.length || 0,
-        normal_cards: notebook.cards?.filter(c => c.status === 'normal').length || 0,
-        familiar_cards: notebook.cards?.filter(c => c.status === 'familiar').length || 0,
-      }))
-
-      setNotebooks(notebooksWithStats)
-    } catch (err) {
+        // Pinned first
+        notebooksData.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0))
+        
+        setNotebooks(notebooksData)
+        setLoading(false)
+      } catch (err) {
+        setError(err.message)
+        setLoading(false)
+      }
+    }, (err) => {
       setError(err.message)
-    } finally {
       setLoading(false)
-    }
-  }
+    })
+    
+    return unsubscribe
+  }, [])
 
   const createNotebook = async (name) => {
     try {
-      const { data, error } = await supabase
-        .from('notebooks')
-        .insert([{ name }])
-        .select()
-        .single()
-
-      if (error) throw error
-      await fetchNotebooks()
-      return { data, error: null }
+      const docRef = await addDoc(collection(db, 'notebooks'), {
+        name,
+        is_pinned: false,
+        last_tested_at: null,
+        createdAt: new Date().toISOString(), // 保持駝峰式大寫
+      })
+      return { data: { id: docRef.id }, error: null }
     } catch (err) {
       return { data: null, error: err.message }
     }
@@ -61,30 +65,20 @@ export function useNotebooks() {
 
   const updateNotebook = async (id, updates) => {
     try {
-      const { data, error } = await supabase
-        .from('notebooks')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      await fetchNotebooks()
-      return { data, error: null }
+      await updateDoc(doc(db, 'notebooks', id), updates)
+      return { error: null }
     } catch (err) {
-      return { data: null, error: err.message }
+      return { error: err.message }
     }
   }
 
   const deleteNotebook = async (id) => {
     try {
-      const { error } = await supabase
-        .from('notebooks')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-      await fetchNotebooks()
+      // Delete all cards in subcollection first
+      const cardsSnap = await getDocs(collection(db, 'notebooks', id, 'cards'))
+      const deletePromises = cardsSnap.docs.map(d => deleteDoc(d.ref))
+      await Promise.all(deletePromises)
+      await deleteDoc(doc(db, 'notebooks', id))
       return { error: null }
     } catch (err) {
       return { error: err.message }
@@ -95,14 +89,5 @@ export function useNotebooks() {
     return updateNotebook(id, { is_pinned: !currentPinned })
   }
 
-  return {
-    notebooks,
-    loading,
-    error,
-    fetchNotebooks,
-    createNotebook,
-    updateNotebook,
-    deleteNotebook,
-    togglePin,
-  }
+  return { notebooks, loading, error, createNotebook, updateNotebook, deleteNotebook, togglePin }
 }

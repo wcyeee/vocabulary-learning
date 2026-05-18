@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, ArrowUpDown } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 import { motion } from 'framer-motion'
 import SpeakButton from '../components/SpeakButton'
 
@@ -9,7 +10,7 @@ export default function AllCards() {
   const [filteredCards, setFilteredCards] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('alpha') // 'alpha' or 'date'
+  const [sortBy, setSortBy] = useState('alpha') // 'alpha', 'date', 'review', 'status'
   const [sortOrder, setSortOrder] = useState('asc')
 
   useEffect(() => {
@@ -23,16 +24,26 @@ export default function AllCards() {
   const fetchAllCards = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('cards')
-        .select(`
-          *,
-          notebook:notebooks(name)
-        `)
-        .order('english', { ascending: true })
+      // Get all notebooks first
+      const notebooksSnap = await getDocs(collection(db, 'notebooks'))
+      const notebooks = {}
+      notebooksSnap.docs.forEach(d => { notebooks[d.id] = d.data().name })
 
-      if (error) throw error
-      setCards(data || [])
+      // Get all cards from all notebooks
+      let allCards = []
+      for (const [notebookId, notebookName] of Object.entries(notebooks)) {
+        // 確保這裡的欄位名稱 (createdAt) 與你資料庫中一致
+        const cardsSnap = await getDocs(
+          query(collection(db, 'notebooks', notebookId, 'cards'), orderBy('createdAt', 'desc'))
+        )
+        const cards = cardsSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          notebook: { name: notebookName }
+        }))
+        allCards = [...allCards, ...cards]
+      }
+      setCards(allCards)
     } catch (err) {
       console.error('Error fetching cards:', err)
     } finally {
@@ -41,7 +52,6 @@ export default function AllCards() {
   }
 
   const getDaysUntilReview = (card) => {
-    // New cards or cards without review date are highest priority (0 days)
     if (card.status === 'new' || !card.next_review_at) {
       return 0
     }
@@ -49,13 +59,18 @@ export default function AllCards() {
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const reviewDate = new Date(card.next_review_at)
+    
+    // 防呆：如果日期解析失敗，直接回傳 0
+    if (isNaN(reviewDate.getTime())) return 0
+
     const reviewDay = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate())
     
-    // Calculate difference in days
     const diffInMs = reviewDay - today
     const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24))
     
-    // If already due (negative or 0), return 0
+    // 如果算出來不是數字 (NaN)，回傳 0
+    if (isNaN(diffInDays)) return 0
+    
     return diffInDays < 0 ? 0 : diffInDays
   }
 
@@ -64,23 +79,26 @@ export default function AllCards() {
 
     // Search filter
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
+      const queryStr = searchQuery.toLowerCase()
       filtered = filtered.filter(card =>
-        card.english.toLowerCase().includes(query) ||
-        card.chinese.toLowerCase().includes(query) ||
-        card.part_of_speech.toLowerCase().includes(query)
+        (card.english?.toLowerCase() || '').includes(queryStr) ||
+        (card.chinese?.toLowerCase() || '').includes(queryStr) ||
+        (card.part_of_speech?.toLowerCase() || '').includes(queryStr)
       )
     }
 
     // Sort
     if (sortBy === 'alpha') {
       filtered.sort((a, b) => {
-        const result = a.english.localeCompare(b.english)
+        const result = (a.english || '').localeCompare(b.english || '')
         return sortOrder === 'asc' ? result : -result
       })
     } else if (sortBy === 'date') {
       filtered.sort((a, b) => {
-        const result = new Date(b.created_at) - new Date(a.created_at)
+        // 修正：這裡改成跟上面一樣的大寫 'createdAt'，防呆加上 || 0 避免 Invalid Date
+        const dateA = new Date(a.createdAt || 0)
+        const dateB = new Date(b.createdAt || 0)
+        const result = dateB - dateA
         return sortOrder === 'asc' ? result : -result
       })
     } else if (sortBy === 'review') {
@@ -93,7 +111,9 @@ export default function AllCards() {
     } else if (sortBy === 'status') {
       filtered.sort((a, b) => {
         const statusOrder = { 'new': 0, 'normal': 1, 'familiar': 2 }
-        const result = statusOrder[a.status] - statusOrder[b.status]
+        const scoreA = statusOrder[a.status] ?? 0
+        const scoreB = statusOrder[b.status] ?? 0
+        const result = scoreA - scoreB
         return sortOrder === 'asc' ? result : -result
       })
     }
@@ -129,7 +149,6 @@ export default function AllCards() {
             />
           </div>
           <div className="flex items-center space-x-2">
-            
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               className="p-2 bg-gray-100 hover:bg-gray-50 rounded-md transition-colors"
@@ -147,7 +166,6 @@ export default function AllCards() {
               <option value="review">Days Until Review</option>
               <option value="status">Status</option>
             </select>
-           
           </div>
         </div>
         <div className="mt-3 text-sm text-gray-600">
@@ -163,53 +181,55 @@ export default function AllCards() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCards.map((card, index) => (
-            <motion.div
-              key={card.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.02 }}
-              className="card p-5"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                      {card.english}
-                    </h3>
-                    <SpeakButton text={card.english} size="sm" />
+          {filteredCards.map((card, index) => {
+            const daysLeft = getDaysUntilReview(card)
+            return (
+              <motion.div
+                key={card.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.02 }}
+                className="card p-5"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        {card.english}
+                      </h3>
+                      <SpeakButton text={card.english} size="sm" />
+                    </div>
+                    <span className="inline-block text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                      {card.part_of_speech}
+                    </span>
                   </div>
-
-                  <span className="inline-block text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
-                    {card.part_of_speech}
-                  </span>
                 </div>
-              </div>
-              <p className="text-gray-700 mb-3">{card.chinese}</p>
-              <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs text-gray-500">
-                  {card.notebook?.name || 'Unknown notebook'}
-                </span>
-                <div>
-                  <span>
-                  {card.status !== 'new' && card.next_review_at ? (
-                    <span className="text-xs text-gray-500 mr-3">
-                      Review in <span className="font-bold">{getDaysUntilReview(card)}</span> day
-                      {getDaysUntilReview(card) !== 1 ? 's' : ''}
-                    </span>) : null}
-                  </span>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    card.status === 'new' ? 'bg-blue-50 text-blue-700' :
-                    card.status === 'normal' ? 'bg-gray-100 text-gray-700' :
-                    'bg-green-50 text-green-700'
-                  }`}>
-                    {card.status}
-                  </span>
-                </div>
+                <p className="text-gray-700 mb-3">{card.chinese}</p>
                 
-              </div>
-            </motion.div>
-          ))}
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <span className="text-xs text-gray-500">
+                    {card.notebook?.name || 'Unknown notebook'}
+                  </span>
+                  
+                  {/* 修正：優化結構，避免三層 span 嵌套與 null 導致的 framer-motion 計算問題 */}
+                  <div className="flex items-center">
+                    {card.status !== 'new' && card.next_review_at && (
+                      <span className="text-xs text-gray-500 mr-3">
+                        Review in <strong className="font-bold">{daysLeft}</strong> day{daysLeft !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      card.status === 'new' ? 'bg-blue-50 text-blue-700' :
+                      card.status === 'normal' ? 'bg-gray-100 text-gray-700' :
+                      'bg-green-50 text-green-700'
+                    }`}>
+                      {card.status}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            )
+          })}
         </div>
       )}
     </div>

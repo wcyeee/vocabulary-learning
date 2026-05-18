@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import {
+  collection, doc, addDoc, updateDoc, deleteDoc,
+  onSnapshot, query, orderBy, writeBatch
+} from 'firebase/firestore'
+import { db } from '../lib/firebase'
 
 export function useCards(notebookId) {
   const [cards, setCards] = useState([])
@@ -7,45 +11,33 @@ export function useCards(notebookId) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (notebookId) {
-      fetchCards()
-    }
-  }, [notebookId])
-
-  const fetchCards = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('cards')
-        .select('*')
-        .eq('notebook_id', notebookId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setCards(data || [])
-    } catch (err) {
-      setError(err.message)
-    } finally {
+    if (!notebookId) return
+    const q = query(
+      collection(db, 'notebooks', notebookId, 'cards'),
+      orderBy('createdAt', 'desc')
+    )
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setCards(snapshot.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
-    }
-  }
+    }, (err) => {
+      setError(err.message)
+      setLoading(false)
+    })
+    return unsubscribe
+  }, [notebookId])
 
   const createCard = async (cardData) => {
     try {
-      const { data, error } = await supabase
-        .from('cards')
-        .insert([{
-          notebook_id: notebookId,
-          ...cardData,
-          status: 'new',
-          consecutive_familiar_count: 0
-        }])
-        .select()
-        .single()
-
-      if (error) throw error
-      await fetchCards()
-      return { data, error: null }
+      const docRef = await addDoc(collection(db, 'notebooks', notebookId, 'cards'), {
+        ...cardData,
+        notebook_id: notebookId,
+        status: 'new',
+        consecutive_familiar_count: 0,
+        current_interval: 0,
+        next_review_at: null,
+        createdAt: new Date().toISOString(),
+      })
+      return { data: { id: docRef.id }, error: null }
     } catch (err) {
       return { data: null, error: err.message }
     }
@@ -53,21 +45,21 @@ export function useCards(notebookId) {
 
   const createCardsBatch = async (cardsData) => {
     try {
-      const cardsToInsert = cardsData.map(card => ({
-        notebook_id: notebookId,
-        ...card,
-        status: 'new',
-        consecutive_familiar_count: 0
-      }))
-
-      const { data, error } = await supabase
-        .from('cards')
-        .insert(cardsToInsert)
-        .select()
-
-      if (error) throw error
-      await fetchCards()
-      return { data, error: null }
+      const batch = writeBatch(db)
+      cardsData.forEach(card => {
+        const ref = doc(collection(db, 'notebooks', notebookId, 'cards'))
+        batch.set(ref, {
+          ...card,
+          notebook_id: notebookId,
+          status: 'new',
+          consecutive_familiar_count: 0,
+          current_interval: 0,
+          next_review_at: null,
+          createdAt: new Date().toISOString(),
+        })
+      })
+      await batch.commit()
+      return { error: null }
     } catch (err) {
       return { data: null, error: err.message }
     }
@@ -75,44 +67,21 @@ export function useCards(notebookId) {
 
   const updateCard = async (id, updates) => {
     try {
-      const { data, error } = await supabase
-        .from('cards')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      await fetchCards()
-      return { data, error: null }
-    } catch (err) {
-      return { data: null, error: err.message }
-    }
-  }
-
-  const deleteCard = async (id) => {
-    try {
-      const { error } = await supabase
-        .from('cards')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-      await fetchCards()
+      await updateDoc(doc(db, 'notebooks', currentCard.notebook_id, 'cards', id), updates)
       return { error: null }
     } catch (err) {
       return { error: err.message }
     }
   }
 
-  return {
-    cards,
-    loading,
-    error,
-    fetchCards,
-    createCard,
-    createCardsBatch,
-    updateCard,
-    deleteCard,
+  const deleteCard = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'notebooks', notebookId, 'cards', id))
+      return { error: null }
+    } catch (err) {
+      return { error: err.message }
+    }
   }
+
+  return { cards, loading, error, createCard, createCardsBatch, updateCard, deleteCard }
 }
