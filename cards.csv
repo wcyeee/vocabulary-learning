@@ -1,0 +1,6 @@
+id,notebook_id,english,part_of_speech,chinese,status,next_review_at,current_interval,consecutive_familiar_count,created_at
+01320974-597d-4392-a218-de8af40b2135,cbfd804c-2c58-40c5-9ca5-0f24373595df,suffice,v,足夠、滿足需求,familiar,2026-05-11 16:00:00+00,8,8,2026-02-02 09:12:28.599607+00
+0741e9a9-ff21-45f4-acd3-4e210abb4af4,cbfd804c-2c58-40c5-9ca5-0f24373595df,trivialize,v,使顯得不重要、輕視、淡化,familiar,2026-05-11 16:00:00+00,8,8,2026-02-02 09:12:28.599607+00
+0ed37608-90fd-4a67-8f77-62261f4f7144,cbfd804c-2c58-40c5-9ca5-0f24373595df,monger,n v,販子、商人、散佈、販賣,normal,2026-05-04 16:00:00+00,1,0,2026-02-02 09:12:28.599607+00
+103c9e38-5f68-4fab-8615-dfa2f882f155,cbfd804c-2c58-40c5-9ca5-0f24373595df,hurdle,n v,障礙、困難、跨欄、越過障礙,familiar,2026-03-26 16:00:00+00,2,1,2026-02-02 09:12:28.599607+00
+1639927e-0f37-4687-9382-0f7233cab1e8,cbfd804c-2c58-40c5-9ca5-0f24373595df,undermine,v,暗中破壞、逐漸削弱,familiar,2026-04-01 16:00:00+00,8,7,2026-02-02 09:12:28.599607+00

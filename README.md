@@ -2,7 +2,7 @@
 
 一個極簡風格的單字學習網頁應用程式，採用間隔重複記憶（SRM）演算法。使用 React、Tailwind CSS 和 Supabase 建構。
 
-**特別說明：這是單用戶版本，無需登入，適合個人使用。**
+**特別說明：這是單用戶版本，適合個人使用。**
 
 ## 功能特色
 
@@ -45,12 +45,12 @@
 ### 前置需求
 - Node.js (v16 或更高版本)
 - npm 或 yarn
-- Supabase 帳號
+- Firebase 帳號
 
 ### 1. 複製專案
 ```bash
-git clone https://github.com/wcyeee/Vocabulary_learning
-cd Vocabulary_learning
+git clone https://github.com/wcyeee/vocabulary-learning
+cd vocabulary-learning
 ```
 
 ### 2. 安裝相依套件
@@ -58,33 +58,73 @@ cd Vocabulary_learning
 npm install
 ```
 
-### 3. 設定 Supabase
+### 3. 設定 Firebase
 
-#### 建立 Supabase 專案
-1. 前往 [supabase.com](https://supabase.com)
-2. 建立新專案
-3. 記下您的專案 URL 和 anon key
+#### 建立專案 (Create Project)
+1. 前往 [console.firebase.google.com](https://console.firebase.google.com)
+2. 點擊 「新增專案」 (Add project) → 輸入專案名稱 (例如 vocabulary-app) → 點擊 「繼續」 (Continue)
+3. 關閉 Google Analytics 分析功能 (本專案不需要) → 點擊 「建立專案」 (Create project)
+4. 點選Authentication，開啟電子郵件與密碼
 
-#### 設定資料庫
-1. 在 Supabase 儀表板中，前往 SQL Editor
-2. 複製 `database-schema.sql` 的內容
-3. 執行 SQL 腳本以建立資料表和索引
+#### 啟用身份驗證 (Enable Authentication)
+1. 在左側選單中，點擊 「建置」 (Build) → 「Authentication」
+2. 點擊 「開始使用」 (Get started)
+3. 在 「登入方法」 (Sign-in method) 標籤頁 → 點擊 「電子郵件/密碼」 (Email/Password)
+4. 啟用第一個開關 (電子郵件/密碼) → 點擊 「儲存」 (Save)
+5. 切換到 「Users」 標籤頁 → 點擊 「新增使用者」 (Add user)
+6. 輸入您的 Email 以及一組強密碼 → 點擊 「新增使用者」 (Add user)
+
+#### 建立 Firestore 資料庫 (Create Firestore Database)
+1. 在左側選單中，點擊 「建置」 (Build) → 「Firestore Database」
+2. 點擊 「建立資料庫」 (Create database)
+3. 選擇 「以實際工作模式啟動」 (Start in production mode) → 點擊 「下一步」 (Next)
+4. 選擇您的資料庫區域 (例如台灣推薦選擇 asia-east1) → 點擊 「啟用」 (Enable)
+5. 進入 「Rules」 標籤頁，將裡面的規則完整替換為以下內容：
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+6. 點擊 「發布」 (Publish)
+
+#### 獲取 Firebase 配置金鑰 (Get Firebase Config)
+1. 在左側選單中，點擊 「專案總覽」 (Project Overview) 旁的齒輪圖示 → 選擇 「專案設定」 (Project settings)
+2. 向下捲動到 「您的應用程式」 (Your apps) 區塊 → 點擊 </> (Web) 圖示
+3. 輸入應用程式暱稱：vocabulary-web → 點擊 「註冊應用程式」 (Register app)
+4. 複製畫面中顯示的 firebaseConfig 物件內容 —— 稍後在設定環境變數時會用到
 
 ### 4. 設定環境變數
-1. 建立.env檔
+1. 在專案根目錄建立.env檔
 
-2. 填入您的 Supabase 憑證：
+2. 將剛才複製的 Firebase Config 對應填入以下欄位：
 ```env
-VITE_SUPABASE_URL=https://your_supabase_project_id.supabase.co
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_FIREBASE_API_KEY=您的_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN=您的_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID=您的_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET=您的_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID=您的_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID=您的_APP_ID
 ```
 
-### 5. 執行開發伺服器
+### 5. 執行範例資料腳本
+1. 在根目錄執行
+```bash
+node importData.mjs
+```
+2. 成功匯入範例資料以及建立資料格式
+
+### 6. 執行開發伺服器
 ```bash
 npm run dev
 ```
 
 應用程式將在 `http://localhost:3000` 上運行
+(也可部屬至Vercel)
 
 
 ## 資料庫結構
