@@ -84,7 +84,7 @@ export default function NotebookDetail() {
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-600">Loading cards...</div>
+    return <div className="text-center py-12 text-gray-600 dark:text-gray-400">Loading cards...</div>
   }
 
   return (
@@ -92,7 +92,7 @@ export default function NotebookDetail() {
       <div className="mb-8">
         <button
           onClick={() => navigate('/')}
-          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors dark:text-gray-300 dark:hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Dashboard</span>
@@ -100,10 +100,10 @@ export default function NotebookDetail() {
         
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
               Manage Cards
             </h1>
-            <p className="text-gray-600">{cards.length} cards in this notebook</p>
+            <p className="text-gray-600 dark:text-gray-400">{cards.length} cards in this notebook</p>
           </div>
           <div className="flex space-x-3">
             <button
@@ -126,10 +126,10 @@ export default function NotebookDetail() {
 
       {cards.length === 0 ? (
         <div className="card p-12 text-center">
-          <h3 className="text-lg font-display font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-display font-semibold text-gray-900 dark:text-white mb-2">
             No cards yet
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             Add your first vocabulary card to start learning
           </p>
           <button
@@ -154,33 +154,33 @@ export default function NotebookDetail() {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                         {card.english}
                       </h3>
                       <SpeakButton text={card.english} size="sm" />
                     </div>
-                    <span className="inline-block text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                    <span className="inline-block text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
                       {card.part_of_speech}
                     </span>
                   </div>
                   <button
                     onClick={() => handleDelete(card.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-all"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-gray-700">{card.chinese}</p>
-                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                <p className="text-gray-700 dark:text-gray-300">{card.chinese}</p>
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
                   <span className={`text-xs px-2 py-1 rounded ${
-                    card.status === 'new' ? 'bg-blue-50 text-blue-700' :
-                    card.status === 'normal' ? 'bg-gray-100 text-gray-700' :
-                    'bg-green-50 text-green-700'
+                    card.status === 'new' ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 text-blue-700 dark:text-blue-300' :
+                    card.status === 'normal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' :
+                    'bg-green-50 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300'
                   }`}>
                     {card.status}
                   </span>
                   {card.current_interval > 0 && (
-                    <span className="text-xs text-gray-500 mr-3">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 mr-3">
                       Review in <span className="font-bold">{card.current_interval}</span> day
                       {card.current_interval !== 1 ? 's' : ''}
                     </span>
@@ -198,14 +198,14 @@ export default function NotebookDetail() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg p-6 max-w-md w-full"
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
           >
-            <h2 className="text-xl font-display font-bold text-gray-900 mb-4">
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">
               Add New Card
             </h2>
             <form onSubmit={handleAddCard} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   English
                 </label>
                 <input
@@ -231,7 +231,7 @@ export default function NotebookDetail() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Chinese
                 </label>
                 <input
@@ -271,17 +271,17 @@ export default function NotebookDetail() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg p-6 max-w-2xl w-full my-8"
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl w-full my-8"
           >
-            <h2 className="text-xl font-display font-bold text-gray-900 mb-4">
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">
               Batch Add Cards
             </h2>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Enter one card per line in the format: english{delimiter}part_of_speech{delimiter}chinese
             </p>
             
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Delimiter
               </label>
               <select
@@ -311,8 +311,8 @@ export default function NotebookDetail() {
             </button>
 
             {preview.length > 0 && (
-              <div className="mb-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md p-3">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">
+              <div className="mb-4 max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md p-3">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                   Preview ({preview.filter(p => p.valid).length} valid cards)
                 </h3>
                 <div className="space-y-2">
@@ -321,18 +321,18 @@ export default function NotebookDetail() {
                       key={item.id}
                       className={`text-sm p-2 rounded ${
                         item.valid
-                          ? 'bg-green-50 border border-green-200'
-                          : 'bg-red-50 border border-red-200'
+                          ? 'bg-green-50 dark:bg-green-900 dark:bg-opacity-20 border border-green-200 dark:border-green-700'
+                          : 'bg-red-50 dark:bg-red-900 dark:bg-opacity-20 border border-red-200 dark:border-red-700'
                       }`}
                     >
                       {item.valid ? (
                         <div className="flex justify-between">
                           <span className="font-medium">{item.english}</span>
-                          <span className="text-gray-600">{item.part_of_speech}</span>
+                          <span className="text-gray-600 dark:text-gray-400">{item.part_of_speech}</span>
                           <span>{item.chinese}</span>
                         </div>
                       ) : (
-                        <span className="text-red-700">Invalid: {item.raw}</span>
+                        <span className="text-red-700 dark:text-red-300">Invalid: {item.raw}</span>
                       )}
                     </div>
                   ))}

@@ -164,7 +164,7 @@ export default function Quiz() {
       <div>
         <button
           onClick={() => navigate('/')}
-          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors dark:text-gray-300 dark:hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Dashboard</span>
@@ -172,34 +172,34 @@ export default function Quiz() {
 
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
               Start Quiz
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Select notebooks to include in your study session
             </p>
           </div>
 
           <div className="card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Select Notebooks
             </h2>
             <div className="space-y-2">
-              <label htmlFor="selectAll" className="flex items-center p-3 rounded-md hover:bg-gray-50 cursor-pointer transition-colors">
+              <label htmlFor="selectAll" className="flex items-center p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors">
                 <input type="checkbox" id="selectAll" onChange={(e) => {
                   if (e.target.checked) {
                     setSelectedNotebooks(notebooks.map(n => n.id))
                   } else {
                     setSelectedNotebooks([])
                   }
-                }} className="w-4 h-4 text-gray-900 border-gray-900 rounded focus:ring-gray-500"
+                }} className="w-4 h-4 text-gray-900 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded focus:ring-gray-500"
                 />
-                <span className="font-bold ml-3 text-gray-900">Select All</span>
+                <span className="font-bold ml-3 text-gray-900 dark:text-white">Select All</span>
               </label>
               {notebooks.map(notebook => (
                 <label
                   key={notebook.id}
-                  className="flex items-center p-3 rounded-md hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="flex items-center p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
                 >
                   <input
                     type="checkbox"
@@ -211,9 +211,9 @@ export default function Quiz() {
                         setSelectedNotebooks(selectedNotebooks.filter(id => id !== notebook.id))
                       }
                     }}
-                    className="w-4 h-4 text-gray-900 border-gray-300 rounded focus:ring-gray-500"
+                    className="w-4 h-4 text-gray-900 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded focus:ring-gray-500"
                   />
-                  <span className="ml-3 text-gray-900">{notebook.name}</span>
+                  <span className="ml-3 text-gray-900 dark:text-white">{notebook.name}</span>
                 </label>
               ))}
             </div>
@@ -245,10 +245,10 @@ export default function Quiz() {
       <div>
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
               Quiz Complete!
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Great job! Here's your session summary
             </p>
           </div>
@@ -278,22 +278,22 @@ export default function Quiz() {
               </div>
 
               <div className="flex flex-col justify-center space-y-4">
-                <div className="text-center p-4 bg-gray-50 rounded-lg">
-                  <div className="text-3xl font-bold text-gray-900">{totalReviewed}</div>
-                  <div className="text-sm text-gray-600">Cards Reviewed</div>
+                <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white">{totalReviewed}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Cards Reviewed</div>
                 </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-3xl font-bold text-green-700">{sessionResults.familiar.length}</div>
-                  <div className="text-sm text-green-600">Marked Familiar</div>
+                <div className="text-center p-4 bg-green-50 dark:bg-green-900 dark:bg-opacity-20 rounded-lg">
+                  <div className="text-3xl font-bold text-green-700 dark:text-green-400">{sessionResults.familiar.length}</div>
+                  <div className="text-sm text-green-600 dark:text-green-400">Marked Familiar</div>
                 </div>
-                <div className="text-center p-4 bg-gray-100 rounded-lg">
-                  <div className="text-3xl font-bold text-gray-700">{sessionResults.normal.length}</div>
-                  <div className="text-sm text-gray-600">Marked Normal</div>
+                <div className="text-center p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                  <div className="text-3xl font-bold text-gray-700 dark:text-gray-300">{sessionResults.normal.length}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">Marked Normal</div>
                 </div>
                 {uniqueAgainCards.length > 0 && (
-                  <div className="text-center p-4 bg-red-50 rounded-lg">
-                    <div className="text-3xl font-bold text-red-700">{uniqueAgainCards.length}</div>
-                    <div className="text-sm text-red-600">Needed Review</div>
+                  <div className="text-center p-4 bg-red-50 dark:bg-red-900 dark:bg-opacity-20 rounded-lg">
+                    <div className="text-3xl font-bold text-red-700 dark:text-red-400">{uniqueAgainCards.length}</div>
+                    <div className="text-sm text-red-600 dark:text-red-400">Needed Review</div>
                   </div>
                 )}
               </div>
@@ -323,7 +323,7 @@ export default function Quiz() {
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {sessionResults.normal.map(card => (
-                      <div key={card.id} className="p-2 bg-gray-50 rounded text-sm">
+                      <div key={card.id} className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-sm">
                         <div className="font-medium text-gray-900">{card.english}</div>
                         <div className="text-gray-600 text-xs">{card.chinese}</div>
                       </div>
@@ -376,13 +376,13 @@ export default function Quiz() {
       <div className="max-w-3xl mx-auto">
         {/* Progress Bar */}
         <div className="mb-6">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
+          <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
             <span>Card {currentIndex + 1} of {cards.length}</span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
             <div
-              className="bg-gray-800 h-2 rounded-full transition-all duration-300"
+              className="bg-gray-800 dark:bg-gray-300 h-2 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -401,30 +401,30 @@ export default function Quiz() {
                 <div className="card h-full flex flex-col items-center justify-center p-8">
                   <div className="text-center">
                     <div className="flex items-center justify-center space-x-4 mb-6">
-                      <div className="text-5xl font-display font-bold text-gray-900">
+                      <div className="text-5xl font-display font-bold text-gray-900 dark:text-white">
                         {currentCard.english}
                       </div>
                       <SpeakButton text={currentCard.english} size="lg" className="rounded-full"/>
                     </div>
-                    <p className="text-gray-500 text-sm">Click to reveal</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">Click to reveal</p>
                   </div>
                 </div>
               </div>
 
               {/* Back */}
               <div className="flip-card-back">
-                <div className="card h-full flex flex-col items-center justify-center p-8 bg-gray-50">
+                <div className="card h-full flex flex-col items-center justify-center p-8 bg-gray-50 dark:bg-gray-700">
                   <div className="text-center">
                     <div className="flex items-center justify-center space-x-4 mb-4">
-                      <div className="text-5xl font-display font-bold text-gray-900">
+                      <div className="text-5xl font-display font-bold text-gray-900 dark:text-white">
                         {currentCard.english}
                       </div>
                       <SpeakButton text={currentCard.english} size="lg" className="rounded-full"/>
                     </div>
-                    <div className="inline-block px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm mb-6">
+                    <div className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-full text-sm mb-6">
                       {currentCard.part_of_speech}
                     </div>
-                    <div className="text-3xl text-gray-800">
+                    <div className="text-3xl text-gray-800 dark:text-white">
                       {currentCard.chinese}
                     </div>
                   </div>
@@ -463,21 +463,21 @@ export default function Quiz() {
           >
             <button
               onClick={() => handleAction('again')}
-              className="p-4 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg font-medium transition-colors"
+              className="p-4 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-100 rounded-lg font-medium transition-colors"
             >
               <div className="text-sm mb-1">Again</div>
               <div className="text-xs opacity-75">Review now</div>
             </button>
             <button
               onClick={() => handleAction('normal')}
-              className="p-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+              className="p-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg font-medium transition-colors"
             >
               <div className="text-sm mb-1">Normal</div>
               <div className="text-xs opacity-75">1 day</div>
             </button>
             <button
               onClick={() => handleAction('familiar')}
-              className="p-4 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg font-medium transition-colors"
+              className="p-4 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-800 rounded-lg font-medium transition-colors"
             >
               <div className="text-sm mb-1">Familiar</div>
               <div className="text-xs opacity-75">
@@ -490,7 +490,7 @@ export default function Quiz() {
         )}
 
         {!isFlipped && (
-          <div className="text-center text-sm text-gray-500">
+          <div className="text-center text-sm text-gray-500 dark:text-gray-400">
             Click the card to reveal the answer
           </div>
         )}

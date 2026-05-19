@@ -22,7 +22,7 @@ export default function SpeakButton({ text, size = 'md', className = '' }) {
         e.stopPropagation() // 防止觸發父元素的點擊事件
         speak(text)
       }}
-      className={`${sizeClasses[size]} bg-gray-100 hover:bg-gray-400 text-gray-400 hover:text-white rounded transition-colors flex items-center justify-center ${className}`}
+      className={`${sizeClasses[size]} bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-300 dark:hover:text-gray-100 rounded transition-colors flex items-center justify-center ${className}`}
       title="Play pronunciation"
       type="button"
     >

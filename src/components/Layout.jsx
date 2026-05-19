@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, BookOpen, LogOut } from 'lucide-react'
+import { Home, BookOpen, LogOut, Sun, Moon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 
 export default function Layout({ children }) {
   const location = useLocation()
   const { logout } = useAuth()
+  const { dark, toggle } = useTheme()
 
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
@@ -12,12 +14,12 @@ export default function Layout({ children }) {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <nav className="bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
-              <h1 className="text-2xl font-display font-bold text-gray-900">Vocabulary</h1>
+              <h1 className="text-2xl font-display font-bold text-gray-900 dark:text-white">Vocabulary</h1>
               <div className="hidden md:flex space-x-4">
                 {navItems.map(item => {
                   const Icon = item.icon
@@ -27,7 +29,7 @@ export default function Layout({ children }) {
                       key={item.path}
                       to={item.path}
                       className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        isActive ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-white' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white'
                       }`}
                     >
                       <Icon className="w-4 h-4" />
@@ -37,18 +39,28 @@ export default function Layout({ children }) {
                 })}
               </div>
             </div>
-            <button
-              onClick={logout}
-              className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden md:inline">Sign Out</span>
-            </button>
-          </div>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={toggle}
+                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+                title="Toggle dark mode"
+              >
+                {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                <span className="hidden md:inline">{dark ? 'Light' : 'Dark'}</span>
+              </button>
+              <button
+                onClick={logout}
+                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden md:inline">Sign Out</span>
+              </button>
+            </div>
+            </div>
         </div>
       </nav>
 
-      <div className="md:hidden bg-white border-b border-gray-200">
+      <div className="md:hidden bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
         <div className="flex justify-around py-2">
           {navItems.map(item => {
             const Icon = item.icon
@@ -58,7 +70,7 @@ export default function Layout({ children }) {
                 key={item.path}
                 to={item.path}
                 className={`flex flex-col items-center space-y-1 px-3 py-2 rounded-md text-xs font-medium transition-colors ${
-                  isActive ? 'text-gray-900' : 'text-gray-600'
+                  isActive ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -69,7 +81,7 @@ export default function Layout({ children }) {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 dark:bg-gray-900 min-h-screen">
         {children}
       </main>
     </div>

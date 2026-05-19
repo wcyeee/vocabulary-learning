@@ -40,17 +40,17 @@ export default function Dashboard() {
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-600">Loading notebooks...</div>
+    return <div className="text-center py-12 text-gray-600 dark:text-gray-400">Loading notebooks...</div>
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
             Your Notebooks
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Organize your vocabulary into collections
           </p>
         </div>
@@ -65,11 +65,11 @@ export default function Dashboard() {
 
       {notebooks.length === 0 ? (
         <div className="card p-12 text-center">
-          <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-display font-semibold text-gray-900 mb-2">
+          <BookOpen className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-display font-semibold text-gray-900 dark:text-white mb-2">
             No notebooks yet
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             Create your first notebook to start learning
           </p>
           <button
@@ -111,31 +111,31 @@ export default function Dashboard() {
                       autoFocus
                     />
                   ) : (
-                    <h3 className="text-lg font-display font-semibold text-gray-900 mb-1 pr-8">
+                    <h3 className="text-lg font-display font-semibold text-gray-900 dark:text-white mb-1 pr-8">
                       {notebook.name}
                     </h3>
                   )}
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     {notebook.createdAt ? new Date(notebook.createdAt).toLocaleDateString() : 'Unknown'}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Last review on：{notebook.last_tested_at ? new Date(notebook.last_tested_at).toLocaleDateString() : 'Never'}
                   </p>
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 mb-4 py-4 border-y border-gray-100">
+                <div className="grid grid-cols-3 gap-2 mb-4 py-4 border-y border-gray-100 dark:border-gray-700">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900">{notebook.total_cards}</div>
-                    <div className="text-xs text-gray-500">Total</div>
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{notebook.total_cards}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-600">{notebook.normal_cards}</div>
-                    <div className="text-xs text-gray-500">Normal</div>
+                    <div className="text-2xl font-bold text-gray-600 dark:text-gray-300">{notebook.normal_cards}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Normal</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-700">{notebook.familiar_cards}</div>
-                    <div className="text-xs text-gray-500">Familiar</div>
+                    <div className="text-2xl font-bold text-gray-700 dark:text-gray-200">{notebook.familiar_cards}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Familiar</div>
                   </div>
                 </div>
 
@@ -144,7 +144,7 @@ export default function Dashboard() {
                   <div className="flex space-x-2">
                     <button
                       onClick={() => togglePin(notebook.id, notebook.is_pinned)}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                       title="Toggle pin"
                     >
                       <Pin className={`w-4 h-4 ${notebook.is_pinned ? 'fill-current' : ''}`} />
@@ -154,14 +154,14 @@ export default function Dashboard() {
                         setEditingId(notebook.id)
                         setEditingName(notebook.name)
                       }}
-                      className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                       title="Rename"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(notebook.id)}
-                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                      className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -195,9 +195,9 @@ export default function Dashboard() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg p-6 max-w-md w-full"
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
           >
-            <h2 className="text-xl font-display font-bold text-gray-900 mb-4">
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">
               Create New Notebook
             </h2>
             <form onSubmit={handleCreate}>

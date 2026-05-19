@@ -122,16 +122,16 @@ export default function AllCards() {
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-600">Loading all cards...</div>
+    return <div className="text-center py-12 text-gray-600 dark:text-gray-400">Loading all cards...</div>
   }
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-display font-bold text-gray-900 mb-2">
+        <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
           All Vocabulary
         </h1>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-400">
           Browse and search across all your cards
         </p>
       </div>
@@ -139,7 +139,7 @@ export default function AllCards() {
       <div className="card p-6 mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               value={searchQuery}
@@ -151,10 +151,10 @@ export default function AllCards() {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="p-2 bg-gray-100 hover:bg-gray-50 rounded-md transition-colors"
+              className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors"
               title={sortOrder === 'asc' ? 'Sort Descending' : 'Sort Ascending'}
             >
-              <ArrowUpDown className="w-5 h-5 text-gray-500" />
+              <ArrowUpDown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
             </button>
             <select
               value={sortBy}
@@ -168,14 +168,14 @@ export default function AllCards() {
             </select>
           </div>
         </div>
-        <div className="mt-3 text-sm text-gray-600">
+        <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
           Showing {filteredCards.length} of {cards.length} cards
         </div>
       </div>
 
       {filteredCards.length === 0 ? (
         <div className="card p-12 text-center">
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             {searchQuery ? 'No cards match your search' : 'No cards found'}
           </p>
         </div>
@@ -194,34 +194,34 @@ export default function AllCards() {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
                         {card.english}
                       </h3>
                       <SpeakButton text={card.english} size="sm" />
                     </div>
-                    <span className="inline-block text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">
+                    <span className="inline-block text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
                       {card.part_of_speech}
                     </span>
                   </div>
                 </div>
-                <p className="text-gray-700 mb-3">{card.chinese}</p>
+                <p className="text-gray-700 dark:text-gray-300 mb-3">{card.chinese}</p>
                 
-                <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
+                <div className="pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
                     {card.notebook?.name || 'Unknown notebook'}
                   </span>
                   
                   {/* 修正：優化結構，避免三層 span 嵌套與 null 導致的 framer-motion 計算問題 */}
                   <div className="flex items-center">
                     {card.status !== 'new' && card.next_review_at && (
-                      <span className="text-xs text-gray-500 mr-3">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 mr-3">
                         Review in <strong className="font-bold">{daysLeft}</strong> day{daysLeft !== 1 ? 's' : ''}
                       </span>
                     )}
                     <span className={`text-xs px-2 py-1 rounded ${
-                      card.status === 'new' ? 'bg-blue-50 text-blue-700' :
-                      card.status === 'normal' ? 'bg-gray-100 text-gray-700' :
-                      'bg-green-50 text-green-700'
+                      card.status === 'new' ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 text-blue-700 dark:text-blue-300' :
+                      card.status === 'normal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' :
+                      'bg-green-50 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300'
                     }`}>
                       {card.status}
                     </span>
