@@ -67,7 +67,7 @@ export function useCards(notebookId) {
 
   const updateCard = async (id, updates) => {
     try {
-      await updateDoc(doc(db, 'notebooks', currentCard.notebook_id, 'cards', id), updates)
+      await updateDoc(doc(db, 'notebooks', notebookId, 'cards', id), updates)
       return { error: null }
     } catch (err) {
       return { error: err.message }

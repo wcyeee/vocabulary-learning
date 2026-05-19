@@ -1,17 +1,22 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Upload, Pencil } from 'lucide-react'
 import { useCards } from '../hooks/useCards'
 import { motion, AnimatePresence } from 'framer-motion'
 import SpeakButton from '../components/SpeakButton'
 
 export default function NotebookDetail() {
   const { id } = useParams()
-  const { cards, loading, createCard, createCardsBatch, deleteCard } = useCards(id)
+  const { cards, loading, createCard, createCardsBatch, updateCard, deleteCard } = useCards(id)
   const navigate = useNavigate()
   
   const [showAddModal, setShowAddModal] = useState(false)
   const [showBatchModal, setShowBatchModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingCard, setEditingCard] = useState(null)
+  const [editEnglish, setEditEnglish] = useState('')
+  const [editPartOfSpeech, setEditPartOfSpeech] = useState('')
+  const [editChinese, setEditChinese] = useState('')
   const [english, setEnglish] = useState('')
   const [partOfSpeech, setPartOfSpeech] = useState('')
   const [chinese, setChinese] = useState('')
@@ -80,6 +85,27 @@ export default function NotebookDetail() {
   const handleDelete = async (cardId) => {
     if (confirm('Delete this card?')) {
       await deleteCard(cardId)
+    }
+  }
+
+  const handleEditOpen = (card) => {
+    setEditingCard(card)
+    setEditEnglish(card.english)
+    setEditPartOfSpeech(card.part_of_speech)
+    setEditChinese(card.chinese)
+    setShowEditModal(true)
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    if (editEnglish.trim() && editChinese.trim()) {
+      await updateCard(editingCard.id, {
+        english: editEnglish.trim(),
+        part_of_speech: editPartOfSpeech,
+        chinese: editChinese.trim()
+      })
+      setShowEditModal(false)
+      setEditingCard(null)
     }
   }
 
@@ -163,6 +189,12 @@ export default function NotebookDetail() {
                       {card.part_of_speech}
                     </span>
                   </div>
+                  <button
+                    onClick={() => handleEditOpen(card)}
+                    className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={() => handleDelete(card.id)}
                     className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-all"
@@ -359,6 +391,39 @@ export default function NotebookDetail() {
                 Add {preview.filter(p => p.valid).length} Cards
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
+          >
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">
+              Edit Card
+            </h2>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">English</label>
+                <input type="text" value={editEnglish} onChange={(e) => setEditEnglish(e.target.value)} className="input" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Part of Speech</label>
+                <input type="text" value={editPartOfSpeech} onChange={(e) => setEditPartOfSpeech(e.target.value)} className="input" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chinese</label>
+                <input type="text" value={editChinese} onChange={(e) => setEditChinese(e.target.value)} className="input" required />
+              </div>
+              <div className="flex space-x-3">
+                <button type="button" onClick={() => setShowEditModal(false)} className="btn-secondary flex-1">Cancel</button>
+                <button type="submit" className="btn-primary flex-1">Save</button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}

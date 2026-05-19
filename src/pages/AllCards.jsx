@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Search, ArrowUpDown } from 'lucide-react'
-import { collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { Search, ArrowUpDown, Pencil, Trash2 } from 'lucide-react'
+import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { motion } from 'framer-motion'
 import SpeakButton from '../components/SpeakButton'
@@ -12,6 +12,11 @@ export default function AllCards() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('alpha') // 'alpha', 'date', 'review', 'status'
   const [sortOrder, setSortOrder] = useState('asc')
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingCard, setEditingCard] = useState(null)
+  const [editEnglish, setEditEnglish] = useState('')
+  const [editPartOfSpeech, setEditPartOfSpeech] = useState('')
+  const [editChinese, setEditChinese] = useState('')
 
   useEffect(() => {
     fetchAllCards()
@@ -39,6 +44,7 @@ export default function AllCards() {
         const cards = cardsSnap.docs.map(d => ({
           id: d.id,
           ...d.data(),
+          notebookId: notebookId,
           notebook: { name: notebookName }
         }))
         allCards = [...allCards, ...cards]
@@ -72,6 +78,36 @@ export default function AllCards() {
     if (isNaN(diffInDays)) return 0
     
     return diffInDays < 0 ? 0 : diffInDays
+  }
+
+  const handleEditOpen = (card) => {
+    setEditingCard(card)
+    setEditEnglish(card.english)
+    setEditPartOfSpeech(card.part_of_speech)
+    setEditChinese(card.chinese)
+    setShowEditModal(true)
+  }
+
+  const handleDelete = async (card) => {
+    if (confirm('Delete this card?')) {
+      await deleteDoc(doc(db, 'notebooks', card.notebookId, 'cards', card.id))
+      setCards(prev => prev.filter(c => c.id !== card.id))
+    }
+  }
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault()
+    if (editEnglish.trim() && editChinese.trim()) {
+      const updates = {
+        english: editEnglish.trim(),
+        part_of_speech: editPartOfSpeech,
+        chinese: editChinese.trim()
+      }
+      await updateDoc(doc(db, 'notebooks', editingCard.notebookId, 'cards', editingCard.id), updates)
+      setCards(prev => prev.map(c => c.id === editingCard.id ? { ...c, ...updates } : c))
+      setShowEditModal(false)
+      setEditingCard(null)
+    }
   }
 
   const filterAndSortCards = () => {
@@ -189,7 +225,7 @@ export default function AllCards() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.02 }}
-                className="card p-5"
+                className="card p-5 group relative"
               >
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
@@ -202,6 +238,14 @@ export default function AllCards() {
                     <span className="inline-block text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
                       {card.part_of_speech}
                     </span>
+                    <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button onClick={() => handleEditOpen(card)} className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(card)} className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <p className="text-gray-700 dark:text-gray-300 mb-3">{card.chinese}</p>
@@ -232,6 +276,40 @@ export default function AllCards() {
           })}
         </div>
       )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
+          >
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">
+              Edit Card
+            </h2>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">English</label>
+                <input type="text" value={editEnglish} onChange={(e) => setEditEnglish(e.target.value)} className="input" required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Part of Speech</label>
+                <input type="text" value={editPartOfSpeech} onChange={(e) => setEditPartOfSpeech(e.target.value)} className="input" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chinese</label>
+                <input type="text" value={editChinese} onChange={(e) => setEditChinese(e.target.value)} className="input" required />
+              </div>
+              <div className="flex space-x-3">
+                <button type="button" onClick={() => setShowEditModal(false)} className="btn-secondary flex-1">Cancel</button>
+                <button type="submit" className="btn-primary flex-1">Save</button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
     </div>
   )
 }
