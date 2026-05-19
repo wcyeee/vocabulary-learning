@@ -112,11 +112,12 @@ VITE_FIREBASE_APP_ID=您的_APP_ID
 ```
 
 ### 5. 執行範例資料腳本
-1. 在根目錄執行
+1. 先在 importData.mjs 填入 Firebase Config
+2. 在根目錄執行
 ```bash
 node importData.mjs
 ```
-2. 成功匯入範例資料以及建立資料格式
+3. 成功匯入範例資料以及建立資料格式
 
 ### 6. 執行開發伺服器
 ```bash
