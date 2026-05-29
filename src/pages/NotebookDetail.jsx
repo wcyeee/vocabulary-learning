@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Trash2, Upload, Pencil } from 'lucide-react'
 import { useCards } from '../hooks/useCards'
 import { motion, AnimatePresence } from 'framer-motion'
 import SpeakButton from '../components/SpeakButton'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function NotebookDetail() {
   const { id } = useParams()
@@ -24,6 +25,8 @@ export default function NotebookDetail() {
   const [batchText, setBatchText] = useState('')
   const [delimiter, setDelimiter] = useState(',')
   const [preview, setPreview] = useState([])
+
+  const [confirmModal, setConfirmModal] = useState({ open: false, cardId: null })
 
   const handleAddCard = async (e) => {
     e.preventDefault()
@@ -82,10 +85,8 @@ export default function NotebookDetail() {
     }
   }
 
-  const handleDelete = async (cardId) => {
-    if (confirm('Delete this card?')) {
-      await deleteCard(cardId)
-    }
+  const handleDelete = (cardId) => {
+    setConfirmModal({ open: true, cardId })
   }
 
   const handleEditOpen = (card) => {
@@ -427,6 +428,19 @@ export default function NotebookDetail() {
           </motion.div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        title="Delete Card"
+        message="Are you sure you want to delete this card? This cannot be undone."
+        confirmLabel="Delete"
+        confirmClass="bg-red-500 hover:bg-red-700 text-white rounded-md px-4 py-2 transition-colors"
+        onConfirm={async () => {
+          await deleteCard(confirmModal.cardId)
+          setConfirmModal({ open: false, cardId: null })
+        }}
+        onCancel={() => setConfirmModal({ open: false, cardId: null })}
+      />
     </div>
   )
 }

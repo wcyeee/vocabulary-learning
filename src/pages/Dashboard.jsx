@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Pin, Edit2, Trash2, PlayCircle, BookOpen } from 'lucide-react'
 import { useNotebooks } from '../hooks/useNotebooks'
 import { motion, AnimatePresence } from 'framer-motion'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function Dashboard() {
   const { notebooks, loading, createNotebook, updateNotebook, deleteNotebook, togglePin } = useNotebooks()
@@ -11,6 +12,7 @@ export default function Dashboard() {
   const [newNotebookName, setNewNotebookName] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editingName, setEditingName] = useState('')
+  const [confirmModal, setConfirmModal] = useState({ open: false, id: null })
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -29,10 +31,8 @@ export default function Dashboard() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this notebook? All cards will be deleted.')) {
-      await deleteNotebook(id)
-    }
+  const handleDelete = (id) => {
+    setConfirmModal({ open: true, id })
   }
 
   const startQuiz = (notebookId) => {
@@ -228,6 +228,18 @@ export default function Dashboard() {
           </motion.div>
         </div>
       )}
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        title="Delete Notebook"
+        message="Are you sure you want to delete this notebook? All cards will be deleted and this cannot be undone."
+        confirmLabel="Delete"
+        confirmClass="bg-red-500 hover:bg-red-700 text-white rounded-md px-4 py-2 transition-colors"
+        onConfirm={async () => {
+          await deleteNotebook(confirmModal.id)
+          setConfirmModal({ open: false, id: null })
+        }}
+        onCancel={() => setConfirmModal({ open: false, id: null })}
+      />
     </div>
   )
 }

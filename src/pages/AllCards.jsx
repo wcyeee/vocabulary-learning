@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from '
 import { db } from '../lib/firebase'
 import { motion } from 'framer-motion'
 import SpeakButton from '../components/SpeakButton'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function AllCards() {
   const [cards, setCards] = useState([])
@@ -17,6 +18,7 @@ export default function AllCards() {
   const [editEnglish, setEditEnglish] = useState('')
   const [editPartOfSpeech, setEditPartOfSpeech] = useState('')
   const [editChinese, setEditChinese] = useState('')
+  const [confirmModal, setConfirmModal] = useState({ open: false, card: null })
 
   useEffect(() => {
     fetchAllCards()
@@ -88,11 +90,8 @@ export default function AllCards() {
     setShowEditModal(true)
   }
 
-  const handleDelete = async (card) => {
-    if (confirm('Delete this card?')) {
-      await deleteDoc(doc(db, 'notebooks', card.notebookId, 'cards', card.id))
-      setCards(prev => prev.filter(c => c.id !== card.id))
-    }
+  const handleDelete = (card) => {
+    setConfirmModal({ open: true, card })
   }
 
   const handleEditSubmit = async (e) => {
@@ -310,6 +309,20 @@ export default function AllCards() {
         </div>
       )}
 
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        title="Delete Card"
+        message="Are you sure you want to delete this card?"
+        confirmLabel="Delete"
+        confirmClass="bg-red-500 hover:bg-red-700 text-white rounded-md px-4 py-2 transition-colors"
+        onConfirm={async () => {
+          const card = confirmModal.card
+          await deleteDoc(doc(db, 'notebooks', card.notebookId, 'cards', card.id))
+          setCards(prev => prev.filter(c => c.id !== card.id))
+          setConfirmModal({ open: false, card: null })
+        }}
+        onCancel={() => setConfirmModal({ open: false, card: null })}
+      />
     </div>
   )
 }

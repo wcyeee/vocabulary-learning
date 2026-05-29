@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from 'recharts'
 import SpeakButton from '../components/SpeakButton'
 import { useSpeech } from '../hooks/useSpeech'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function Quiz() {
   const location = useLocation()
@@ -28,6 +29,8 @@ export default function Quiz() {
     normal: [],
     again: []
   })
+
+  const [infoModal, setInfoModal] = useState({ open: false, message: '' })
 
   useEffect(() => {
     fetchNotebooks()
@@ -75,10 +78,6 @@ export default function Quiz() {
   }
 
   const startQuiz = async () => {
-    if (selectedNotebooks.length === 0) {
-      alert('Please select at least one notebook')
-      return
-    }
     let allCards = []
     for (const notebookId of selectedNotebooks) {
       const snapshot = await getDocs(collection(db, 'notebooks', notebookId, 'cards'))
@@ -94,7 +93,7 @@ export default function Quiz() {
     const dueCards = getDueCards(allCards)
     const shuffled = shuffleArray(dueCards)
     if (shuffled.length === 0) {
-      alert('No cards due for review!')
+      setInfoModal({ open: true, message: 'No cards due for review! Come back later or add new cards.' })
       return
     }
     setCards(shuffled)
@@ -227,6 +226,16 @@ export default function Quiz() {
             Start Quiz
           </button>
         </div>
+
+        <ConfirmModal
+          isOpen={infoModal.open}
+          title="Notice"
+          message={infoModal.message}
+          confirmLabel="OK"
+          confirmClass="btn-primary"
+          onConfirm={() => setInfoModal({ open: false, message: '' })}
+          onCancel={() => setInfoModal({ open: false, message: '' })}
+        />
       </div>
     )
   }
