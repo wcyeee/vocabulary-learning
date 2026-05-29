@@ -302,14 +302,14 @@ export default function Quiz() {
             <div className="space-y-6">
               {sessionResults.familiar.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-green-700 mb-3">
+                  <h3 className="text-lg font-semibold text-green-700 dark:text-green-400 mb-3">
                     Familiar Cards ({sessionResults.familiar.length})
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {sessionResults.familiar.map(card => (
-                      <div key={card.id} className="p-2 bg-green-50 rounded text-sm">
-                        <div className="font-medium text-gray-900">{card.english}</div>
-                        <div className="text-gray-600 text-xs">{card.chinese}</div>
+                      <div key={card.id} className="p-2 bg-green-50 dark:bg-green-900/30 rounded text-sm">
+                        <div className="font-medium text-gray-900 dark:text-green-100">{card.english}</div>
+                        <div className="text-gray-600 dark:text-green-300 text-xs">{card.chinese}</div>
                       </div>
                     ))}
                   </div>
@@ -318,14 +318,14 @@ export default function Quiz() {
 
               {sessionResults.normal.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3">
+                  <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">
                     Normal Cards ({sessionResults.normal.length})
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {sessionResults.normal.map(card => (
                       <div key={card.id} className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-sm">
-                        <div className="font-medium text-gray-900">{card.english}</div>
-                        <div className="text-gray-600 text-xs">{card.chinese}</div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{card.english}</div>
+                        <div className="text-gray-600 dark:text-gray-400 text-xs">{card.chinese}</div>
                       </div>
                     ))}
                   </div>
@@ -334,16 +334,16 @@ export default function Quiz() {
 
               {uniqueAgainCards.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold text-red-700 mb-3">
+                  <h3 className="text-lg font-semibold text-red-700 dark:text-red-400 mb-3">
                     Cards That Needed Review ({uniqueAgainCards.length})
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {uniqueAgainCards.map(cardId => {
                       const card = sessionResults.again.find(c => c.id === cardId)
                       return (
-                        <div key={cardId} className="p-2 bg-red-50 rounded text-sm">
-                          <div className="font-medium text-gray-900">{card.english}</div>
-                          <div className="text-gray-600 text-xs">{card.chinese}</div>
+                        <div key={cardId} className="p-2 bg-red-50 dark:bg-red-900/30 rounded text-sm">
+                          <div className="font-medium text-gray-900 dark:text-red-100">{card.english}</div>
+                          <div className="text-gray-600 dark:text-red-300 text-xs">{card.chinese}</div>
                         </div>
                       )
                     })}
