@@ -1,14 +1,18 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Upload, Pencil } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Upload, Pencil, Download } from 'lucide-react'
 import { useCards } from '../hooks/useCards'
+import { useNotebooks } from '../hooks/useNotebooks'
 import { motion, AnimatePresence } from 'framer-motion'
 import SpeakButton from '../components/SpeakButton'
 import ConfirmModal from '../components/ConfirmModal'
+import ExportModal from '../components/ExportModal'
 
 export default function NotebookDetail() {
   const { id } = useParams()
   const { cards, loading, createCard, createCardsBatch, updateCard, deleteCard } = useCards(id)
+  const { notebooks } = useNotebooks()
+  const notebookName = notebooks.find(n => n.id === id)?.name || ''
   const navigate = useNavigate()
   
   const [showAddModal, setShowAddModal] = useState(false)
@@ -27,6 +31,7 @@ export default function NotebookDetail() {
   const [preview, setPreview] = useState([])
 
   const [confirmModal, setConfirmModal] = useState({ open: false, cardId: null })
+  const [showExportModal, setShowExportModal] = useState(false)
 
   const handleAddCard = async (e) => {
     e.preventDefault()
@@ -139,6 +144,13 @@ export default function NotebookDetail() {
             >
               <Upload className="w-4 h-4" />
               <span>Batch Add</span>
+            </button>
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="btn-secondary flex items-center space-x-2"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export</span>
             </button>
             <button
               onClick={() => setShowAddModal(true)}
@@ -441,6 +453,12 @@ export default function NotebookDetail() {
         }}
         onCancel={() => setConfirmModal({ open: false, cardId: null })}
       />
+     <ExportModal
+      isOpen={showExportModal}
+      onClose={() => setShowExportModal(false)}
+      cards={cards.map(c => ({ ...c, notebook: { name: notebookName } }))}
+      title={notebookName || 'Notebook Cards'}
+    />
     </div>
   )
 }

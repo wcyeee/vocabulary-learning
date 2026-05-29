@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Search, ArrowUpDown, Pencil, Trash2 } from 'lucide-react'
+import { Search, ArrowUpDown, Pencil, Trash2, Download } from 'lucide-react'
 import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { motion } from 'framer-motion'
 import SpeakButton from '../components/SpeakButton'
 import ConfirmModal from '../components/ConfirmModal'
+import ExportModal from '../components/ExportModal'
 
 export default function AllCards() {
   const [cards, setCards] = useState([])
@@ -19,6 +20,7 @@ export default function AllCards() {
   const [editPartOfSpeech, setEditPartOfSpeech] = useState('')
   const [editChinese, setEditChinese] = useState('')
   const [confirmModal, setConfirmModal] = useState({ open: false, card: null })
+  const [showExportModal, setShowExportModal] = useState(false)
 
   useEffect(() => {
     fetchAllCards()
@@ -201,6 +203,14 @@ export default function AllCards() {
               <option value="review">Days Until Review</option>
               <option value="status">Status</option>
             </select>
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="btn-secondary flex items-center space-x-2"
+              title="Export cards"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export</span>
+            </button>
           </div>
         </div>
         <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
@@ -322,6 +332,13 @@ export default function AllCards() {
           setConfirmModal({ open: false, card: null })
         }}
         onCancel={() => setConfirmModal({ open: false, card: null })}
+      />
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        cards={filteredCards}
+        title="All Vocabulary"
       />
     </div>
   )
