@@ -126,7 +126,7 @@ export default function Quiz() {
       // Update last_tested_at for all notebooks
       const uniqueNotebookIds = [...new Set(cards.map(c => c.notebook_id))]
       for (const notebookId of uniqueNotebookIds) {
-        await updateDoc(doc(db, 'notebooks', currentCard.notebook_id), {
+        await updateDoc(doc(db, 'notebooks', notebookId), {
           last_tested_at: new Date().toISOString()
         })
       }
