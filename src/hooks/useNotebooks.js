@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, getDocs
+  onSnapshot, query, orderBy
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
@@ -13,40 +13,58 @@ export function useNotebooks() {
   useEffect(() => {
     const q = query(collection(db, 'notebooks'), orderBy('createdAt', 'desc'))
     
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      try {
-        // 使用 Promise.all 同步並行處理所有筆記本的子集合查詢，避免卡住
-        const notebooksPromises = snapshot.docs.map(async (docSnap) => {
-          const notebook = { id: docSnap.id, ...docSnap.data() }
-          
-          // Fetch cards subcollection for stats
-          const cardsSnap = await getDocs(collection(db, 'notebooks', docSnap.id, 'cards'))
-          const cards = cardsSnap.docs.map(d => d.data())
-          
-          notebook.total_cards = cards.length
-          notebook.normal_cards = cards.filter(c => c.status === 'normal').length
-          notebook.familiar_cards = cards.filter(c => c.status === 'familiar').length
-          
-          return notebook
-        })
+    const cardUnsubscribes = []
 
-        const notebooksData = await Promise.all(notebooksPromises)
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      // 每次 notebooks 變動，清掉舊的 card listeners
+      cardUnsubscribes.forEach(fn => fn())
+      cardUnsubscribes.length = 0
 
-        // Pinned first
-        notebooksData.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0))
-        
-        setNotebooks(notebooksData)
+      // 用 Map 存每個 notebook 的統計，方便即時更新
+      const statsMap = {}
+      snapshot.docs.forEach(docSnap => {
+        statsMap[docSnap.id] = { id: docSnap.id, ...docSnap.data(), total_cards: 0, normal_cards: 0, familiar_cards: 0 }
+      })
+
+      const rebuildList = () => {
+        const list = Object.values(statsMap)
+        list.sort((a, b) => (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0))
+        setNotebooks(list)
         setLoading(false)
-      } catch (err) {
-        setError(err.message)
+      }
+
+      // 對每個 notebook 的 cards 子集合建立即時監聽
+      snapshot.docs.forEach(docSnap => {
+        const cardUnsub = onSnapshot(
+          collection(db, 'notebooks', docSnap.id, 'cards'),
+          (cardsSnap) => {
+            const cards = cardsSnap.docs.map(d => d.data())
+            statsMap[docSnap.id] = {
+              ...statsMap[docSnap.id],
+              total_cards: cards.length,
+              normal_cards: cards.filter(c => c.status === 'normal').length,
+              familiar_cards: cards.filter(c => c.status === 'familiar').length,
+            }
+            rebuildList()
+          }
+        )
+        cardUnsubscribes.push(cardUnsub)
+      })
+
+      // 如果完全沒有 notebooks，也要 setLoading(false)
+      if (snapshot.docs.length === 0) {
+        setNotebooks([])
         setLoading(false)
       }
     }, (err) => {
       setError(err.message)
       setLoading(false)
     })
-    
-    return unsubscribe
+
+    return () => {
+      unsubscribe()
+      cardUnsubscribes.forEach(fn => fn())
+    }
   }, [])
 
   const createNotebook = async (name) => {
