@@ -1,85 +1,79 @@
-# Vocabulary Leaner (Anki Clone) - Spaced Repetition Learning App (個人版)
+# Vocabulary — 個人單字學習應用程式
 
-一個極簡風格的單字學習網頁應用程式，採用間隔重複記憶（SRM）演算法。使用 React、Tailwind CSS 和 Supabase 建構。
+一個極簡風格的單字學習網頁應用程式，採用間隔重複記憶（SRM）演算法，靈感來自 Anki。使用 React、Tailwind CSS 與 Firebase 建構，專為個人使用設計。
 
-**特別說明：這是單用戶版本，適合個人使用。**
+**技術堆疊：** React 18 · Tailwind CSS · Firebase (Auth + Firestore) · Framer Motion · Recharts · Vite
+
+---
 
 ## 功能特色
 
 ### 單字本管理
-- 創建和組織多個單字本
-- 釘選重要的單字本以快速存取
-- 查看每個單字本的統計資料（總數、普通、熟悉）
-- 編輯和刪除單字本
+- 建立多個單字本，分類整理詞彙
+- 釘選常用單字本以快速存取
+- 即時顯示每本的卡片統計（總數、普通、熟悉）
+- 重新命名、刪除單字本
 
-### 單字卡片管理
-- **單筆新增**：逐一新增單字卡（英文、詞性、中文）
-- **批量匯入**：一次匯入多張卡片，支援自訂分隔符（逗號、斜線、管道符號、Tab）
-- 批量匯入前可預覽確認
-- 刪除個別卡片
-- 在全域單字庫中搜尋和排序所有卡片
+### 單字卡管理
+- **單筆新增**：逐一輸入英文、詞性、中文，並提供 Cambridge Dictionary 快捷連結
+- **批量匯入**：支援逗號、斜線、管道符號、Tab 等分隔符，匯入前可預覽確認
+- **編輯 / 刪除**：在單字本頁或全局卡片頁皆可操作
+- **匯出**：支援 Excel（.xlsx）與 PDF 列印兩種格式
 
-### 智能測驗系統
-- 由anki啟發
-- 可選擇多個單字本進行組合測驗
-- 精美的翻牌動畫效果
-- **間隔重複演算法**：
-  - **重來（Again）**：卡片會在本次測驗中重新出現
-  - **普通（Normal）**：1 天後複習
-  - **熟悉（Familiar）**：漸進式間隔（2 → 4 → 8 天，最多 8 天）
-- 測驗中可前後瀏覽卡片
-- 完整的測驗總結：
-  - 圓餅圖視覺化統計
-  - 分類明細（熟悉、普通、需要複習）
-  - 每個類別的詳細卡片清單
+### 智能測驗系統（Anki 風格 SRM）
+- 可同時選擇多個單字本組合測驗
+- 翻牌動畫，點擊卡片或按空白鍵翻轉
+- 按 `V` 鍵隨時播放英文發音（優先使用 Google 高品質語音）
+- 三段評分，按數字鍵 1 / 2 / 3 快速操作：
+  | 按鈕 | 說明 | 下次複習 |
+  |------|------|----------|
+  | **Again（重來）** | 本次測驗中重新出現 | — |
+  | **Normal（普通）** | 有些把握 | 1 天後 |
+  | **Familiar（熟悉）** | 非常有把握 | 2 → 4 → 8 天（漸進） |
+- 測驗結束後顯示圓餅圖統計與分類卡片明細
 
-### 設計理念
-- **極簡主義**美學，精緻的灰色調色盤
-- **優雅排版**使用 Crimson Pro 和 Inter 字型
-- **響應式設計**針對 iPhone 17 Pro、iPad Air 5 和 LG Gram 16" 優化
-- 使用 Framer Motion 的流暢動畫和過渡效果
-- 乾淨、無干擾的介面
+### 全局單字庫（All Cards）
+- 跨所有單字本搜尋
+- 多種排序方式：字母、新增日期、距複習天數、狀態
+- 直接在此頁編輯或刪除卡片
+
+### 其他
+- **深色模式**：一鍵切換，偏好設定儲存於 localStorage
+- **響應式設計**：針對手機、平板、桌機優化
+- **Firebase 登入**：電子郵件 / 密碼驗證，保護個人資料
+
+---
 
 ## 快速開始
 
 ### 前置需求
-- Node.js (v16 或更高版本)
+- Node.js v16+
 - npm 或 yarn
 - Firebase 帳號
 
-### 1. 複製專案
+### 1. 複製並安裝
+
 ```bash
 git clone https://github.com/wcyeee/vocabulary-learning
 cd vocabulary-learning
-```
-
-### 2. 安裝相依套件
-```bash
 npm install
 ```
 
-### 3. 設定 Firebase
+### 2. 設定 Firebase
 
-#### 建立專案 (Create Project)
-1. 前往 [console.firebase.google.com](https://console.firebase.google.com)
-2. 點擊 「新增專案」 (Add project) → 輸入專案名稱 (例如 vocabulary-app) → 點擊 「繼續」 (Continue)
-3. 關閉 Google Analytics 分析功能 (本專案不需要) → 點擊 「建立專案」 (Create project)
-4. 點選Authentication，開啟電子郵件與密碼
+#### 建立專案
+1. 前往 [console.firebase.google.com](https://console.firebase.google.com)，新增專案（關閉 Google Analytics）
 
-#### 啟用身份驗證 (Enable Authentication)
-1. 在左側選單中，點擊 「建置」 (Build) → 「Authentication」
-2. 點擊 「開始使用」 (Get started)
-3. 在 「登入方法」 (Sign-in method) 標籤頁 → 點擊 「電子郵件/密碼」 (Email/Password)
-4. 啟用第一個開關 (電子郵件/密碼) → 點擊 「儲存」 (Save)
-5. 切換到 「Users」 標籤頁 → 點擊 「新增使用者」 (Add user)
-6. 輸入您的 Email 以及一組強密碼 → 點擊 「新增使用者」 (Add user)
+#### 啟用 Authentication
+1. 左側選單 → **Authentication** → 開始使用
+2. 登入方法 → 啟用**電子郵件 / 密碼**
+3. Users 標籤 → 新增使用者（輸入您的 Email 與密碼）
 
-#### 建立 Firestore 資料庫 (Create Firestore Database)
-1. 在左側選單中，點擊 「建置」 (Build) → 「Firestore Database」
-2. 點擊 「建立資料庫」 (Create database)
-3. 選擇 「以實際工作模式啟動」 (Start in production mode) → 點擊 「下一步」 (Next)
-4. 選擇您的資料庫區域 (例如台灣推薦選擇 asia-east1) → 點擊 「啟用」 (Enable)
-5. 進入 「Rules」 標籤頁，將裡面的規則完整替換為以下內容：
+#### 建立 Firestore 資料庫
+1. 左側選單 → **Firestore Database** → 建立資料庫
+2. 選擇**以實際工作模式啟動**，區域建議選 `asia-east1`
+3. 進入 **Rules** 標籤，貼上以下規則後發布：
+
 ```javascript
 rules_version = '2';
 service cloud.firestore {
@@ -90,18 +84,15 @@ service cloud.firestore {
   }
 }
 ```
-6. 點擊 「發布」 (Publish)
 
-#### 獲取 Firebase 配置金鑰 (Get Firebase Config)
-1. 在左側選單中，點擊 「專案總覽」 (Project Overview) 旁的齒輪圖示 → 選擇 「專案設定」 (Project settings)
-2. 向下捲動到 「您的應用程式」 (Your apps) 區塊 → 點擊 </> (Web) 圖示
-3. 輸入應用程式暱稱：vocabulary-web → 點擊 「註冊應用程式」 (Register app)
-4. 複製畫面中顯示的 firebaseConfig 物件內容 —— 稍後在設定環境變數時會用到
+#### 取得 Firebase 設定金鑰
+1. 專案設定（齒輪圖示）→ 向下捲動至「您的應用程式」→ 點擊 `</>` 註冊 Web 應用程式
+2. 複製 `firebaseConfig` 物件內容備用
 
-### 4. 設定環境變數
-1. 在專案根目錄建立.env檔
+### 3. 設定環境變數
 
-2. 將剛才複製的 Firebase Config 對應填入以下欄位：
+在專案根目錄建立 `.env`：
+
 ```env
 VITE_FIREBASE_API_KEY=您的_API_KEY
 VITE_FIREBASE_AUTH_DOMAIN=您的_AUTH_DOMAIN
@@ -111,132 +102,94 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=您的_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID=您的_APP_ID
 ```
 
-### 5. 執行範例資料腳本
-1. 先在 importData.mjs 填入 Firebase Config
-2. 在根目錄執行
+### 4. 匯入範例資料（建立資料結構）
+
 ```bash
+# 先在 importData.mjs 填入您的 Firebase Config (匯入後請記得勿上傳firebase config)
 node importData.mjs
 ```
-3. 成功匯入範例資料以及建立資料格式
 
-### 6. 執行開發伺服器
+### 5. 啟動開發伺服器
+
 ```bash
 npm run dev
+# http://localhost:3000
 ```
 
-應用程式將在 `http://localhost:3000` 上運行
-(也可部屬至Vercel)
+> 也可部署至 Vercel，直接連接 GitHub 倉庫即可。
 
+---
 
-## 資料庫結構
-
-### Notebooks 資料表
-```sql
-- id: UUID (主鍵)
-- name: TEXT
-- is_pinned: BOOLEAN
-- last_tested_at: TIMESTAMP
-- created_at: TIMESTAMP
-```
-
-### Cards 資料表
-```sql
-- id: UUID (主鍵)
-- notebook_id: UUID (外鍵指向 notebooks)
-- english: TEXT
-- part_of_speech: TEXT
-- chinese: TEXT
-- status: TEXT ('new', 'normal', 'familiar')
-- next_review_at: TIMESTAMP
-- current_interval: INTEGER
-- consecutive_familiar_count: INTEGER
-- created_at: TIMESTAMP
-```
-
-## 使用方法
-
-### 建立第一個單字本
-1. 進入網站（無需登入）
-2. 點擊儀表板上的「New Notebook」
-3. 輸入名稱並點擊「Create」
+## 使用說明
 
 ### 新增單字卡
 
-#### 單筆模式
-1. 開啟單字本並點擊「Add Card」
-2. 輸入英文單字、選擇詞性、新增中文翻譯
-3. 點擊「Add Card」
+**單筆模式：** 在儀表板點擊「Add Card」，或進入單字本後點擊「Add Card」。輸入英文後可點擊 **Cambridge** 按鈕快速查詞。
 
-#### 批量模式
-1. 在單字本檢視中點擊「Batch Add」
-2. 選擇您的分隔符（逗號、斜線、管道符號或 Tab）
-3. 以 `english{分隔符}part_of_speech{分隔符}chinese` 格式輸入卡片
-4. 點擊「Preview」以驗證解析結果
-5. 點擊「Add Cards」儲存
+**批量模式：** 進入單字本 → 點擊「Batch Add」。每行一張卡片，格式為：
 
-批量輸入範例（逗號分隔符）：
 ```
-happy,adj,快樂的
-learn,v,學習
-spiff,n v,小費、打扮整齊
+english{分隔符}part_of_speech{分隔符}chinese
 ```
 
-### 開始測驗
-1. 從儀表板點擊單字本上的「Quiz」，或
-2. 前往 Quiz 頁面並選擇多個單字本
-3. 點擊「Start Quiz」
-4. 點擊卡片翻轉並顯示答案，電腦可按下空白鍵快速操作
-5. 可按下語音鍵聽取英文單字發音，電腦可按下 "v" 鍵快速操作
-6. 選擇您的信心程度：
-   - **Again（重來）**：需要更多練習（本次測驗中重新出現），電腦可按下數字鍵 "1" 快速操作
-   - **Normal（普通）**：有些信心（1 天後複習），電腦可按下數字鍵 "2" 快速操作
-   - **Familiar（熟悉）**：非常有信心（2/4/8 天間隔），電腦可按下數字鍵 "3" 快速操作
+範例（逗號分隔）：
+```
+serendipity,n,意外發現美好事物的能力
+trivialize,v,使顯得不重要、輕視
+hurdle,n v,障礙、困難、跨欄
+```
 
-### 查看所有卡片
-1. 從選單導航至「All Cards」
-2. 使用搜尋欄尋找特定單字
-3. 按字母或新增日期排序
+### 測驗流程
 
-## 設計特色
+1. 儀表板點擊「Quiz」（直接帶入該本），或前往 Quiz 頁面手動選擇多個單字本
+2. 點擊卡片或按**空白鍵**翻轉
+3. 按 **V** 鍵播放發音
+4. 翻開後按 **1 / 2 / 3** 或點擊按鈕評分
+5. 測驗完成後查看統計摘要
 
-### 字型
-- **展示字型**：Google Sans
-- **內文字型**：Inter
+### 匯出資料
 
-### 響應式斷點
-- 手機：< 768px（單欄）
-- 平板：768px - 1024px（2 欄）
-- 桌面：> 1024px（3 欄）
+在「All Cards」頁或任一單字本頁，點擊「Export」可選擇匯出為：
+- **Excel（.xlsx）**：含編號、英文、詞性、中文、狀態、所屬單字本
+- **PDF（列印）**：開啟瀏覽器列印對話框
 
-## 🛠️ 技術堆疊
+---
 
-- **前端**：React 18
-- **樣式**：Tailwind CSS
-- **路由**：React Router DOM
-- **動畫**：Framer Motion
-- **圖表**：Recharts
-- **圖示**：Lucide React
-- **資料庫**：Supabase (PostgreSQL)
-- **建置工具**：Vite
+## 資料庫結構
 
-## 響應式設計
+```
+notebooks/
+  {notebookId}
+    name, is_pinned, last_tested_at, createdAt
+    cards/
+      {cardId}
+        english, part_of_speech, chinese
+        status           # 'new' | 'normal' | 'familiar'
+        next_review_at   # ISO 8601 timestamp
+        current_interval # days
+        consecutive_familiar_count
+        notebook_id, createdAt
+```
 
-應用程式完全響應式，已在以下裝置測試：
-- **iPhone 17 Pro** (393 × 852 px)
-- **iPad Air 5** (820 × 1180 px)
-- **LG Gram 16"** (1920 × 1200 px)
+---
 
-## 貢獻
+## 響應式支援
 
-這是一個學習專案。歡迎 fork 並根據您的需求進行自訂！
+| 裝置 | 斷點 | 佈局 |
+|------|------|------|
+| 手機 | < 768px | 單欄 |
+| 平板 | 768–1024px | 雙欄 |
+| 桌機 | > 1024px | 三欄 |
+
+測試裝置：iPhone 17 Pro · iPad Air 5 · LG Gram 16"
+
+---
 
 ## 授權
 
-MIT License - 可自由用於個人或教育目的。
+MIT License — 可自由用於個人或教育目的。
 
 ## 致謝
 
 - 靈感來自 [Anki](https://apps.ankiweb.net/)
 - 間隔重複演算法基於 SM-2 原則
-
----
