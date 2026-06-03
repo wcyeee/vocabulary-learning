@@ -4,6 +4,9 @@ import { Plus, Pin, Edit2, Trash2, PlayCircle, BookOpen } from 'lucide-react'
 import { useNotebooks } from '../hooks/useNotebooks'
 import { motion, AnimatePresence } from 'framer-motion'
 import ConfirmModal from '../components/ConfirmModal'
+import AddCardModal from '../components/AddCardModal'
+import { addDoc, collection } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 
 export default function Dashboard() {
   const { notebooks, loading, createNotebook, updateNotebook, deleteNotebook, togglePin } = useNotebooks()
@@ -13,6 +16,7 @@ export default function Dashboard() {
   const [editingId, setEditingId] = useState(null)
   const [editingName, setEditingName] = useState('')
   const [confirmModal, setConfirmModal] = useState({ open: false, id: null })
+  const [showAddCardModal, setShowAddCardModal] = useState(false)
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -21,6 +25,20 @@ export default function Dashboard() {
       setNewNotebookName('')
       setShowCreateModal(false)
     }
+  }
+
+  const handleAddCard = async ({ english, part_of_speech, chinese, notebookId }) => {
+    await addDoc(collection(db, 'notebooks', notebookId, 'cards'), {
+      english,
+      part_of_speech,
+      chinese,
+      notebook_id: notebookId,
+      status: 'new',
+      consecutive_familiar_count: 0,
+      current_interval: 0,
+      next_review_at: null,
+      createdAt: new Date().toISOString(),
+    })
   }
 
   const handleEdit = async (id) => {
@@ -54,13 +72,22 @@ export default function Dashboard() {
             Organize your vocabulary into collections
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Notebook</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAddCardModal(true)}
+            className="btn-secondary flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Card</span>
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Notebook</span>
+          </button>
+        </div>
       </div>
 
       {notebooks.length === 0 ? (
@@ -239,6 +266,12 @@ export default function Dashboard() {
           setConfirmModal({ open: false, id: null })
         }}
         onCancel={() => setConfirmModal({ open: false, id: null })}
+      />
+      <AddCardModal
+        isOpen={showAddCardModal}
+        onClose={() => setShowAddCardModal(false)}
+        onSubmit={handleAddCard}
+        notebooks={notebooks}
       />
     </div>
   )

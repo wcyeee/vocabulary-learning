@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import SpeakButton from '../components/SpeakButton'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportModal from '../components/ExportModal'
+import AddCardModal from '../components/AddCardModal'
 
 export default function NotebookDetail() {
   const { id } = useParams()
@@ -22,9 +23,6 @@ export default function NotebookDetail() {
   const [editEnglish, setEditEnglish] = useState('')
   const [editPartOfSpeech, setEditPartOfSpeech] = useState('')
   const [editChinese, setEditChinese] = useState('')
-  const [english, setEnglish] = useState('')
-  const [partOfSpeech, setPartOfSpeech] = useState('')
-  const [chinese, setChinese] = useState('')
   
   const [batchText, setBatchText] = useState('')
   const [delimiter, setDelimiter] = useState(',')
@@ -33,19 +31,8 @@ export default function NotebookDetail() {
   const [confirmModal, setConfirmModal] = useState({ open: false, cardId: null })
   const [showExportModal, setShowExportModal] = useState(false)
 
-  const handleAddCard = async (e) => {
-    e.preventDefault()
-    if (english.trim() && chinese.trim()) {
-      await createCard({
-        english: english.trim(),
-        part_of_speech: partOfSpeech,
-        chinese: chinese.trim()
-      })
-      setEnglish('')
-      setChinese('')
-      setPartOfSpeech('')
-      setShowAddModal(false)
-    }
+  const handleAddCard = async ({ english, part_of_speech, chinese }) => {
+    await createCard({ english, part_of_speech, chinese })
   }
 
   const handleBatchPreview = () => {
@@ -238,77 +225,13 @@ export default function NotebookDetail() {
       )}
 
       {/* Add Single Card Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
-          >
-            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">
-              Add New Card
-            </h2>
-            <form onSubmit={handleAddCard} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  English
-                </label>
-                <input
-                  type="text"
-                  value={english}
-                  onChange={(e) => setEnglish(e.target.value)}
-                  className="input"
-                  placeholder="e.g., happy"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Part of Speech
-                </label>
-                <input
-                  type="text"
-                  value={partOfSpeech}
-                  onChange={(e) => setPartOfSpeech(e.target.value)}
-                  className="input"
-                  placeholder="e.g., n, v, adj, phr"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Chinese
-                </label>
-                <input
-                  type="text"
-                  value={chinese}
-                  onChange={(e) => setChinese(e.target.value)}
-                  className="input"
-                  placeholder="e.g., 快樂的"
-                  required
-                />
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false)
-                    setEnglish('')
-                    setChinese('')
-                    setPartOfSpeech('noun')
-                  }}
-                  className="btn-secondary flex-1"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary flex-1">
-                  Add Card
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
+      <AddCardModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSubmit={handleAddCard}
+        notebooks={[]}
+        defaultNotebookId={id}
+      />
 
       {/* Batch Add Modal */}
       {showBatchModal && (
