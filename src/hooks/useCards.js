@@ -83,5 +83,33 @@ export function useCards(notebookId) {
     }
   }
 
-  return { cards, loading, error, createCard, createCardsBatch, updateCard, deleteCard }
+  // Move selected cards to another notebook, preserving all review state
+  const moveCards = async (cardIds, targetNotebookId) => {
+    try {
+      const batch = writeBatch(db)
+
+      for (const cardId of cardIds) {
+        const sourceCard = cards.find(c => c.id === cardId)
+        if (!sourceCard) continue
+
+        // Strip local-only fields before writing to new location
+        const { id: _id, notebookId: _nid, notebook: _nb, ...cardData } = sourceCard
+
+        // Create new doc in target notebook (all review fields preserved)
+        const newRef = doc(collection(db, 'notebooks', targetNotebookId, 'cards'))
+        batch.set(newRef, { ...cardData, notebook_id: targetNotebookId })
+
+        // Delete original doc
+        const oldRef = doc(db, 'notebooks', notebookId, 'cards', cardId)
+        batch.delete(oldRef)
+      }
+
+      await batch.commit()
+      return { error: null }
+    } catch (err) {
+      return { error: err.message }
+    }
+  }
+
+  return { cards, loading, error, createCard, createCardsBatch, updateCard, deleteCard, moveCards }
 }

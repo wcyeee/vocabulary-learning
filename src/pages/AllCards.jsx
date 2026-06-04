@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Search, ArrowUpDown, Pencil, Trash2, Download } from 'lucide-react'
-import { collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { Search, ArrowUpDown, Pencil, Trash2, Download, CheckSquare, Square, X } from 'lucide-react'
+import {
+  collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc,
+  writeBatch
+} from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { motion } from 'framer-motion'
 import SpeakButton from '../components/SpeakButton'
@@ -12,7 +15,7 @@ export default function AllCards() {
   const [filteredCards, setFilteredCards] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('alpha') // 'alpha', 'date', 'review', 'status'
+  const [sortBy, setSortBy] = useState('alpha')
   const [sortOrder, setSortOrder] = useState('asc')
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingCard, setEditingCard] = useState(null)
@@ -21,6 +24,14 @@ export default function AllCards() {
   const [editChinese, setEditChinese] = useState('')
   const [confirmModal, setConfirmModal] = useState({ open: false, card: null })
   const [showExportModal, setShowExportModal] = useState(false)
+
+  // Bulk selection state
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedCardIds, setSelectedCardIds] = useState([])
+  const [showMoveModal, setShowMoveModal] = useState(false)
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [allNotebooks, setAllNotebooks] = useState([])
+  const [moveLoading, setMoveLoading] = useState(false)
 
   useEffect(() => {
     fetchAllCards()
@@ -33,15 +44,15 @@ export default function AllCards() {
   const fetchAllCards = async () => {
     try {
       setLoading(true)
-      // Get all notebooks first
       const notebooksSnap = await getDocs(collection(db, 'notebooks'))
       const notebooks = {}
       notebooksSnap.docs.forEach(d => { notebooks[d.id] = d.data().name })
 
-      // Get all cards from all notebooks
+      // Save notebooks list for move modal
+      setAllNotebooks(notebooksSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+
       let allCards = []
       for (const [notebookId, notebookName] of Object.entries(notebooks)) {
-        // 確保這裡的欄位名稱 (createdAt) 與你資料庫中一致
         const cardsSnap = await getDocs(
           query(collection(db, 'notebooks', notebookId, 'cards'), orderBy('createdAt', 'desc'))
         )
@@ -62,25 +73,14 @@ export default function AllCards() {
   }
 
   const getDaysUntilReview = (card) => {
-    if (card.status === 'new' || !card.next_review_at) {
-      return 0
-    }
-
+    if (card.status === 'new' || !card.next_review_at) return 0
     const now = new Date()
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const reviewDate = new Date(card.next_review_at)
-    
-    // 防呆：如果日期解析失敗，直接回傳 0
     if (isNaN(reviewDate.getTime())) return 0
-
     const reviewDay = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate())
-    
-    const diffInMs = reviewDay - today
-    const diffInDays = Math.ceil(diffInMs / (1000 * 60 * 60 * 24))
-    
-    // 如果算出來不是數字 (NaN)，回傳 0
+    const diffInDays = Math.ceil((reviewDay - today) / (1000 * 60 * 60 * 24))
     if (isNaN(diffInDays)) return 0
-    
     return diffInDays < 0 ? 0 : diffInDays
   }
 
@@ -113,8 +113,6 @@ export default function AllCards() {
 
   const filterAndSortCards = () => {
     let filtered = [...cards]
-
-    // Search filter
     if (searchQuery) {
       const queryStr = searchQuery.toLowerCase()
       filtered = filtered.filter(card =>
@@ -123,8 +121,6 @@ export default function AllCards() {
         (card.part_of_speech?.toLowerCase() || '').includes(queryStr)
       )
     }
-
-    // Sort
     if (sortBy === 'alpha') {
       filtered.sort((a, b) => {
         const result = (a.english || '').localeCompare(b.english || '')
@@ -132,7 +128,6 @@ export default function AllCards() {
       })
     } else if (sortBy === 'date') {
       filtered.sort((a, b) => {
-        // 修正：這裡改成跟上面一樣的大寫 'createdAt'，防呆加上 || 0 避免 Invalid Date
         const dateA = new Date(a.createdAt || 0)
         const dateB = new Date(b.createdAt || 0)
         const result = dateB - dateA
@@ -140,22 +135,85 @@ export default function AllCards() {
       })
     } else if (sortBy === 'review') {
       filtered.sort((a, b) => {
-        const daysA = getDaysUntilReview(a)
-        const daysB = getDaysUntilReview(b)
-        const result = daysA - daysB
+        const result = getDaysUntilReview(a) - getDaysUntilReview(b)
         return sortOrder === 'asc' ? result : -result
       })
     } else if (sortBy === 'status') {
       filtered.sort((a, b) => {
         const statusOrder = { 'new': 0, 'normal': 1, 'familiar': 2 }
-        const scoreA = statusOrder[a.status] ?? 0
-        const scoreB = statusOrder[b.status] ?? 0
-        const result = scoreA - scoreB
+        const result = (statusOrder[a.status] ?? 0) - (statusOrder[b.status] ?? 0)
         return sortOrder === 'asc' ? result : -result
       })
     }
-
     setFilteredCards(filtered)
+  }
+
+  // Bulk selection helpers
+  const toggleSelectCard = (cardId) => {
+    setSelectedCardIds(prev =>
+      prev.includes(cardId) ? prev.filter(id => id !== cardId) : [...prev, cardId]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedCardIds(
+      selectedCardIds.length === filteredCards.length
+        ? []
+        : filteredCards.map(c => c.id)
+    )
+  }
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false)
+    setSelectedCardIds([])
+  }
+
+  const handleBulkDelete = async () => {
+    const batch = writeBatch(db)
+    for (const cardId of selectedCardIds) {
+      const card = cards.find(c => c.id === cardId)
+      if (!card) continue
+      batch.delete(doc(db, 'notebooks', card.notebookId, 'cards', cardId))
+    }
+    await batch.commit()
+    setCards(prev => prev.filter(c => !selectedCardIds.includes(c.id)))
+    exitSelectionMode()
+    setConfirmBulkDelete(false)
+  }
+
+  const handleMoveCards = async (targetNotebookId) => {
+    if (!targetNotebookId) return
+    setMoveLoading(true)
+    try {
+      const targetNotebook = allNotebooks.find(n => n.id === targetNotebookId)
+      const batch = writeBatch(db)
+
+      for (const cardId of selectedCardIds) {
+        const card = cards.find(c => c.id === cardId)
+        if (!card) continue
+
+        // Strip local-only display fields before writing
+        const { id: _id, notebookId: _nid, notebook: _nb, ...cardData } = card
+
+        // Create new doc in target notebook (all review state preserved)
+        const newRef = doc(collection(db, 'notebooks', targetNotebookId, 'cards'))
+        batch.set(newRef, { ...cardData, notebook_id: targetNotebookId })
+
+        // Delete original doc
+        batch.delete(doc(db, 'notebooks', card.notebookId, 'cards', cardId))
+      }
+
+      await batch.commit()
+
+      // Update local state: remove moved cards from current list
+      setCards(prev => prev.filter(c => !selectedCardIds.includes(c.id)))
+    } catch (err) {
+      console.error('Move failed:', err)
+    } finally {
+      setMoveLoading(false)
+      exitSelectionMode()
+      setShowMoveModal(false)
+    }
   }
 
   if (loading) {
@@ -185,7 +243,7 @@ export default function AllCards() {
               className="input pl-10"
             />
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center flex-wrap gap-2">
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors"
@@ -203,14 +261,56 @@ export default function AllCards() {
               <option value="review">Days Until Review</option>
               <option value="status">Status</option>
             </select>
-            <button
-              onClick={() => setShowExportModal(true)}
-              className="btn-secondary flex items-center space-x-2"
-              title="Export cards"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export</span>
-            </button>
+
+            {/* Select / selection action buttons */}
+            {!selectionMode ? (
+              <>
+                <button
+                  onClick={() => setSelectionMode(true)}
+                  className="btn-secondary flex items-center space-x-2 whitespace-nowrap"
+                >
+                  <CheckSquare className="w-4 h-4" />
+                  <span>Select</span>
+                </button>
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="btn-secondary flex items-center space-x-2"
+                  title="Export cards"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  {selectedCardIds.length} selected
+                </span>
+                <button onClick={toggleSelectAll} className="btn-secondary text-sm py-1.5 whitespace-nowrap">
+                  {selectedCardIds.length === filteredCards.length ? 'Deselect All' : 'Select All'}
+                </button>
+                <button
+                  onClick={() => setConfirmBulkDelete(true)}
+                  disabled={selectedCardIds.length === 0}
+                  className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  Delete ({selectedCardIds.length})
+                </button>
+                <button
+                  onClick={() => setShowMoveModal(true)}
+                  disabled={selectedCardIds.length === 0}
+                  className="btn-primary text-sm py-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  Move ({selectedCardIds.length})
+                </button>
+                <button
+                  onClick={exitSelectionMode}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </>
+            )}
           </div>
         </div>
         <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
@@ -228,56 +328,73 @@ export default function AllCards() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCards.map((card, index) => {
             const daysLeft = getDaysUntilReview(card)
+            const isSelected = selectedCardIds.includes(card.id)
             return (
               <motion.div
                 key={card.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.02 }}
-                className="card p-5 group relative"
+                className={`card p-5 group relative transition-all
+                  ${selectionMode ? 'cursor-pointer select-none' : ''}
+                  ${selectionMode && isSelected ? 'ring-2 ring-gray-800 dark:ring-gray-300 bg-gray-50 dark:bg-gray-700' : ''}
+                `}
+                onClick={selectionMode ? () => toggleSelectCard(card.id) : undefined}
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                        {card.english}
-                      </h3>
-                      <SpeakButton text={card.english} size="sm" />
-                    </div>
-                    <span className="inline-block text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
-                      {card.part_of_speech}
-                    </span>
-                    <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                      <button onClick={() => handleEditOpen(card)} className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(card)} className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                {/* Checkbox indicator */}
+                {selectionMode && (
+                  <div className="absolute top-3 left-3 z-10">
+                    {isSelected
+                      ? <CheckSquare className="w-5 h-5 text-gray-800 dark:text-gray-200" />
+                      : <Square className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    }
+                  </div>
+                )}
+
+                <div className={selectionMode ? 'pl-7' : ''}>
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                          {card.english}
+                        </h3>
+                        {!selectionMode && <SpeakButton text={card.english} size="sm" />}
+                      </div>
+                      <span className="inline-block text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
+                        {card.part_of_speech}
+                      </span>
+                      {!selectionMode && (
+                        <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                          <button onClick={() => handleEditOpen(card)} className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(card)} className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-                <p className="text-gray-700 dark:text-gray-300 mb-3">{card.chinese}</p>
-                
-                <div className="pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {card.notebook?.name || 'Unknown notebook'}
-                  </span>
-                  
-                  {/* 修正：優化結構，避免三層 span 嵌套與 null 導致的 framer-motion 計算問題 */}
-                  <div className="flex items-center">
-                    {card.status !== 'new' && card.next_review_at && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400 mr-3">
-                        Review in <strong className="font-bold">{daysLeft}</strong> day{daysLeft !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                    <span className={`text-xs px-2 py-1 rounded ${
-                      card.status === 'new' ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 text-blue-700 dark:text-blue-300' :
-                      card.status === 'normal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' :
-                      'bg-green-50 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300'
-                    }`}>
-                      {card.status}
+                  <p className="text-gray-700 dark:text-gray-300 mb-3">{card.chinese}</p>
+
+                  <div className="pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {card.notebook?.name || 'Unknown notebook'}
                     </span>
+                    <div className="flex items-center">
+                      {card.status !== 'new' && card.next_review_at && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 mr-3">
+                          Review in <strong className="font-bold">{daysLeft}</strong> day{daysLeft !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        card.status === 'new' ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 text-blue-700 dark:text-blue-300' :
+                        card.status === 'normal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' :
+                        'bg-green-50 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300'
+                      }`}>
+                        {card.status}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -294,9 +411,7 @@ export default function AllCards() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
           >
-            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">
-              Edit Card
-            </h2>
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">Edit Card</h2>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">English</label>
@@ -319,6 +434,47 @@ export default function AllCards() {
         </div>
       )}
 
+      {/* Move Modal */}
+      {showMoveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm w-full"
+          >
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-2">
+              Move Cards
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Move {selectedCardIds.length} card(s) to a notebook. Review progress will be preserved.
+            </p>
+            {allNotebooks.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">No notebooks available.</p>
+            ) : (
+              <select
+                className="input mb-4"
+                defaultValue=""
+                onChange={(e) => { if (e.target.value) handleMoveCards(e.target.value) }}
+                disabled={moveLoading}
+              >
+                <option value="" disabled>Select target notebook…</option>
+                {allNotebooks.map(n => (
+                  <option key={n.id} value={n.id}>{n.name}</option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={() => setShowMoveModal(false)}
+              className="btn-secondary w-full"
+              disabled={moveLoading}
+            >
+              {moveLoading ? 'Moving…' : 'Cancel'}
+            </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Single card delete confirm */}
       <ConfirmModal
         isOpen={confirmModal.open}
         title="Delete Card"
@@ -332,6 +488,17 @@ export default function AllCards() {
           setConfirmModal({ open: false, card: null })
         }}
         onCancel={() => setConfirmModal({ open: false, card: null })}
+      />
+
+      {/* Bulk delete confirm */}
+      <ConfirmModal
+        isOpen={confirmBulkDelete}
+        title={`Delete ${selectedCardIds.length} Cards`}
+        message="Are you sure you want to delete all selected cards? This cannot be undone."
+        confirmLabel="Delete All"
+        confirmClass="bg-red-500 hover:bg-red-700 text-white rounded-md px-4 py-2 transition-colors"
+        onConfirm={handleBulkDelete}
+        onCancel={() => setConfirmBulkDelete(false)}
       />
 
       <ExportModal

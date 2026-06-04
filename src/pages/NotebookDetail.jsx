@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Upload, Pencil, Download } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Upload, Pencil, Download, CheckSquare, Square, X } from 'lucide-react'
 import { useCards } from '../hooks/useCards'
 import { useNotebooks } from '../hooks/useNotebooks'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,11 +11,11 @@ import AddCardModal from '../components/AddCardModal'
 
 export default function NotebookDetail() {
   const { id } = useParams()
-  const { cards, loading, createCard, createCardsBatch, updateCard, deleteCard } = useCards(id)
+  const { cards, loading, createCard, createCardsBatch, updateCard, deleteCard, moveCards } = useCards(id)
   const { notebooks } = useNotebooks()
   const notebookName = notebooks.find(n => n.id === id)?.name || ''
   const navigate = useNavigate()
-  
+
   const [showAddModal, setShowAddModal] = useState(false)
   const [showBatchModal, setShowBatchModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -23,13 +23,20 @@ export default function NotebookDetail() {
   const [editEnglish, setEditEnglish] = useState('')
   const [editPartOfSpeech, setEditPartOfSpeech] = useState('')
   const [editChinese, setEditChinese] = useState('')
-  
+
   const [batchText, setBatchText] = useState('')
   const [delimiter, setDelimiter] = useState(',')
   const [preview, setPreview] = useState([])
 
   const [confirmModal, setConfirmModal] = useState({ open: false, cardId: null })
   const [showExportModal, setShowExportModal] = useState(false)
+
+  // Bulk selection state
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedCardIds, setSelectedCardIds] = useState([])
+  const [showMoveModal, setShowMoveModal] = useState(false)
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [moveLoading, setMoveLoading] = useState(false)
 
   const handleAddCard = async ({ english, part_of_speech, chinese }) => {
     await createCard({ english, part_of_speech, chinese })
@@ -40,24 +47,13 @@ export default function NotebookDetail() {
       setPreview([])
       return
     }
-
     const lines = batchText.trim().split('\n')
     const parsed = lines.map((line, index) => {
       const parts = line.split(delimiter).map(p => p.trim())
       if (parts.length >= 3) {
-        return {
-          id: index,
-          english: parts[0],
-          part_of_speech: parts[1],
-          chinese: parts[2],
-          valid: true
-        }
+        return { id: index, english: parts[0], part_of_speech: parts[1], chinese: parts[2], valid: true }
       }
-      return {
-        id: index,
-        raw: line,
-        valid: false
-      }
+      return { id: index, raw: line, valid: false }
     })
     setPreview(parsed)
   }
@@ -68,7 +64,6 @@ export default function NotebookDetail() {
       part_of_speech: p.part_of_speech,
       chinese: p.chinese
     }))
-    
     if (validCards.length > 0) {
       await createCardsBatch(validCards)
       setBatchText('')
@@ -102,9 +97,47 @@ export default function NotebookDetail() {
     }
   }
 
+  // Bulk selection helpers
+  const toggleSelectCard = (cardId) => {
+    setSelectedCardIds(prev =>
+      prev.includes(cardId) ? prev.filter(id => id !== cardId) : [...prev, cardId]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedCardIds(
+      selectedCardIds.length === cards.length ? [] : cards.map(c => c.id)
+    )
+  }
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false)
+    setSelectedCardIds([])
+  }
+
+  const handleBulkDelete = async () => {
+    for (const cardId of selectedCardIds) {
+      await deleteCard(cardId)
+    }
+    exitSelectionMode()
+    setConfirmBulkDelete(false)
+  }
+
+  const handleMoveCards = async (targetNotebookId) => {
+    if (!targetNotebookId) return
+    setMoveLoading(true)
+    await moveCards(selectedCardIds, targetNotebookId)
+    setMoveLoading(false)
+    exitSelectionMode()
+    setShowMoveModal(false)
+  }
+
   if (loading) {
     return <div className="text-center py-12 text-gray-600 dark:text-gray-400">Loading cards...</div>
   }
+
+  // Notebooks available to move to (exclude current)
+  const moveTargetNotebooks = notebooks.filter(n => n.id !== id)
 
   return (
     <div>
@@ -116,36 +149,77 @@ export default function NotebookDetail() {
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Dashboard</span>
         </button>
-        
-        <div className="flex justify-between items-center">
+
+        <div className="flex justify-between items-center flex-wrap gap-3">
           <div>
             <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
               Manage Cards
             </h1>
             <p className="text-gray-600 dark:text-gray-400">{cards.length} cards in this notebook</p>
           </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={() => setShowBatchModal(true)}
-              className="btn-secondary flex items-center space-x-2"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Batch Add</span>
-            </button>
-            <button
-              onClick={() => setShowExportModal(true)}
-              className="btn-secondary flex items-center space-x-2"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export</span>
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn-primary flex items-center space-x-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Card</span>
-            </button>
+
+          <div className="flex items-center flex-wrap gap-2">
+            {!selectionMode ? (
+              <>
+                <button
+                  onClick={() => setSelectionMode(true)}
+                  className="btn-secondary flex items-center space-x-2"
+                >
+                  <CheckSquare className="w-4 h-4" />
+                  <span>Select</span>
+                </button>
+                <button
+                  onClick={() => setShowBatchModal(true)}
+                  className="btn-secondary flex items-center space-x-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Batch Add</span>
+                </button>
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="btn-secondary flex items-center space-x-2"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export</span>
+                </button>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="btn-primary flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Card</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-gray-600 dark:text-gray-400 px-2">
+                  {selectedCardIds.length} selected
+                </span>
+                <button onClick={toggleSelectAll} className="btn-secondary text-sm py-1.5">
+                  {selectedCardIds.length === cards.length ? 'Deselect All' : 'Select All'}
+                </button>
+                <button
+                  onClick={() => setConfirmBulkDelete(true)}
+                  disabled={selectedCardIds.length === 0}
+                  className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Delete ({selectedCardIds.length})
+                </button>
+                <button
+                  onClick={() => setShowMoveModal(true)}
+                  disabled={selectedCardIds.length === 0}
+                  className="btn-primary text-sm py-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Move ({selectedCardIds.length})
+                </button>
+                <button
+                  onClick={exitSelectionMode}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -169,57 +243,80 @@ export default function NotebookDetail() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>
-            {cards.map((card) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="card p-5 group relative"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                        {card.english}
-                      </h3>
-                      <SpeakButton text={card.english} size="sm" />
+            {cards.map((card) => {
+              const isSelected = selectedCardIds.includes(card.id)
+              return (
+                <motion.div
+                  key={card.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className={`card p-5 group relative transition-all
+                    ${selectionMode ? 'cursor-pointer select-none' : ''}
+                    ${selectionMode && isSelected ? 'ring-2 ring-gray-800 dark:ring-gray-300 bg-gray-50 dark:bg-gray-700' : ''}
+                  `}
+                  onClick={selectionMode ? () => toggleSelectCard(card.id) : undefined}
+                >
+                  {/* Checkbox indicator in selection mode */}
+                  {selectionMode && (
+                    <div className="absolute top-3 left-3 z-10">
+                      {isSelected
+                        ? <CheckSquare className="w-5 h-5 text-gray-800 dark:text-gray-200" />
+                        : <Square className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                      }
                     </div>
-                    <span className="inline-block text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
-                      {card.part_of_speech}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleEditOpen(card)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(card.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <p className="text-gray-700 dark:text-gray-300">{card.chinese}</p>
-                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    card.status === 'new' ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 text-blue-700 dark:text-blue-300' :
-                    card.status === 'normal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' :
-                    'bg-green-50 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300'
-                  }`}>
-                    {card.status}
-                  </span>
-                  {card.current_interval > 0 && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 mr-3">
-                      Review in <span className="font-bold">{card.current_interval}</span> day
-                      {card.current_interval !== 1 ? 's' : ''}
-                    </span>
                   )}
-                </div>
-              </motion.div>
-            ))}
+
+                  <div className={selectionMode ? 'pl-7' : ''}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                            {card.english}
+                          </h3>
+                          {!selectionMode && <SpeakButton text={card.english} size="sm" />}
+                        </div>
+                        <span className="inline-block text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
+                          {card.part_of_speech}
+                        </span>
+                      </div>
+                      {!selectionMode && (
+                        <>
+                          <button
+                            onClick={() => handleEditOpen(card)}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(card.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-gray-700 dark:text-gray-300">{card.chinese}</p>
+                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        card.status === 'new' ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 text-blue-700 dark:text-blue-300' :
+                        card.status === 'normal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' :
+                        'bg-green-50 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300'
+                      }`}>
+                        {card.status}
+                      </span>
+                      {card.current_interval > 0 && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 mr-3">
+                          Review in <span className="font-bold">{card.current_interval}</span> day
+                          {card.current_interval !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )
+            })}
           </AnimatePresence>
         </div>
       )}
@@ -247,37 +344,22 @@ export default function NotebookDetail() {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Enter one card per line in the format: english{delimiter}part_of_speech{delimiter}chinese
             </p>
-            
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Delimiter
-              </label>
-              <select
-                value={delimiter}
-                onChange={(e) => setDelimiter(e.target.value)}
-                className="input max-w-xs"
-              >
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Delimiter</label>
+              <select value={delimiter} onChange={(e) => setDelimiter(e.target.value)} className="input max-w-xs">
                 <option value=",">Comma (,)</option>
                 <option value="/">Slash (/)</option>
                 <option value="|">Pipe (|)</option>
                 <option value="\t">Tab</option>
               </select>
             </div>
-
             <textarea
               value={batchText}
               onChange={(e) => setBatchText(e.target.value)}
               className="input h-40 font-mono text-sm mb-3"
               placeholder={`happy${delimiter}adjective${delimiter}快樂的\nlearn${delimiter}verb${delimiter}學習`}
             />
-            
-            <button
-              onClick={handleBatchPreview}
-              className="btn-secondary w-full mb-4"
-            >
-              Preview
-            </button>
-
+            <button onClick={handleBatchPreview} className="btn-secondary w-full mb-4">Preview</button>
             {preview.length > 0 && (
               <div className="mb-4 max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md p-3">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
@@ -285,14 +367,11 @@ export default function NotebookDetail() {
                 </h3>
                 <div className="space-y-2">
                   {preview.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`text-sm p-2 rounded ${
-                        item.valid
-                          ? 'bg-green-50 dark:bg-green-900 dark:bg-opacity-20 border border-green-200 dark:border-green-700'
-                          : 'bg-red-50 dark:bg-red-900 dark:bg-opacity-20 border border-red-200 dark:border-red-700'
-                      }`}
-                    >
+                    <div key={item.id} className={`text-sm p-2 rounded ${
+                      item.valid
+                        ? 'bg-green-50 dark:bg-green-900 dark:bg-opacity-20 border border-green-200 dark:border-green-700'
+                        : 'bg-red-50 dark:bg-red-900 dark:bg-opacity-20 border border-red-200 dark:border-red-700'
+                    }`}>
                       {item.valid ? (
                         <div className="flex justify-between">
                           <span className="font-medium">{item.english}</span>
@@ -307,18 +386,8 @@ export default function NotebookDetail() {
                 </div>
               </div>
             )}
-
             <div className="flex space-x-3">
-              <button
-                onClick={() => {
-                  setShowBatchModal(false)
-                  setBatchText('')
-                  setPreview([])
-                }}
-                className="btn-secondary flex-1"
-              >
-                Cancel
-              </button>
+              <button onClick={() => { setShowBatchModal(false); setBatchText(''); setPreview([]) }} className="btn-secondary flex-1">Cancel</button>
               <button
                 onClick={handleBatchSubmit}
                 disabled={preview.filter(p => p.valid).length === 0}
@@ -339,9 +408,7 @@ export default function NotebookDetail() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
           >
-            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">
-              Edit Card
-            </h2>
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">Edit Card</h2>
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">English</label>
@@ -364,6 +431,49 @@ export default function NotebookDetail() {
         </div>
       )}
 
+      {/* Move Modal */}
+      {showMoveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm w-full"
+          >
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-2">
+              Move Cards
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Move {selectedCardIds.length} card(s) to another notebook. Review progress will be preserved.
+            </p>
+            {moveTargetNotebooks.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                No other notebooks available. Please create another notebook first.
+              </p>
+            ) : (
+              <select
+                className="input mb-4"
+                defaultValue=""
+                onChange={(e) => { if (e.target.value) handleMoveCards(e.target.value) }}
+                disabled={moveLoading}
+              >
+                <option value="" disabled>Select target notebook…</option>
+                {moveTargetNotebooks.map(n => (
+                  <option key={n.id} value={n.id}>{n.name}</option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={() => setShowMoveModal(false)}
+              className="btn-secondary w-full"
+              disabled={moveLoading}
+            >
+              {moveLoading ? 'Moving…' : 'Cancel'}
+            </button>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Single card delete confirm */}
       <ConfirmModal
         isOpen={confirmModal.open}
         title="Delete Card"
@@ -376,12 +486,24 @@ export default function NotebookDetail() {
         }}
         onCancel={() => setConfirmModal({ open: false, cardId: null })}
       />
-     <ExportModal
-      isOpen={showExportModal}
-      onClose={() => setShowExportModal(false)}
-      cards={cards.map(c => ({ ...c, notebook: { name: notebookName } }))}
-      title={notebookName || 'Notebook Cards'}
-    />
+
+      {/* Bulk delete confirm */}
+      <ConfirmModal
+        isOpen={confirmBulkDelete}
+        title={`Delete ${selectedCardIds.length} Cards`}
+        message="Are you sure you want to delete all selected cards? This cannot be undone."
+        confirmLabel="Delete All"
+        confirmClass="bg-red-500 hover:bg-red-700 text-white rounded-md px-4 py-2 transition-colors"
+        onConfirm={handleBulkDelete}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        cards={cards.map(c => ({ ...c, notebook: { name: notebookName } }))}
+        title={notebookName || 'Notebook Cards'}
+      />
     </div>
   )
 }
