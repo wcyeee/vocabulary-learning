@@ -29,9 +29,7 @@ export default function Dashboard() {
 
   const handleAddCard = async ({ english, part_of_speech, chinese, notebookId }) => {
     await addDoc(collection(db, 'notebooks', notebookId, 'cards'), {
-      english,
-      part_of_speech,
-      chinese,
+      english, part_of_speech, chinese,
       notebook_id: notebookId,
       status: 'new',
       consecutive_familiar_count: 0,
@@ -44,48 +42,31 @@ export default function Dashboard() {
   const handleEdit = async (id) => {
     if (editingName.trim()) {
       await updateNotebook(id, { name: editingName.trim() })
-      setEditingId(null)
-      setEditingName('')
+      setEditingId(null); setEditingName('')
     }
   }
 
-  const handleDelete = (id) => {
-    setConfirmModal({ open: true, id })
-  }
+  const handleDelete = (id) => { setConfirmModal({ open: true, id }) }
+  const startQuiz = (notebookId) => { navigate('/quiz', { state: { selectedNotebooks: [notebookId] } }) }
 
-  const startQuiz = (notebookId) => {
-    navigate('/quiz', { state: { selectedNotebooks: [notebookId] } })
-  }
-
-  if (loading) {
-    return <div className="text-center py-12 text-gray-600 dark:text-gray-400">Loading notebooks...</div>
-  }
+  if (loading) return <div className="text-center py-12 text-gray-600 dark:text-gray-400">Loading notebooks...</div>
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
+      {/* Page header — stacks on mobile */}
+      <div className="flex flex-col mt-6 sm:flex-row sm:justify-between sm:items-center gap-3 mb-10">
         <div>
-          <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold text-gray-900 dark:text-white mb-1">
             Your Notebooks
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Organize your vocabulary into collections
-          </p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Organize your vocabulary into collections</p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowAddCardModal(true)}
-            className="btn-secondary flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Card</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => setShowAddCardModal(true)} className="btn-secondary flex items-center gap-1.5">
+            <Plus className="w-4 h-4" /><span>Add Card</span>
           </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn-primary flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Notebook</span>
+          <button onClick={() => setShowCreateModal(true)} className="btn-primary flex items-center gap-1.5">
+            <Plus className="w-4 h-4" /><span>New Notebook</span>
           </button>
         </div>
       </div>
@@ -93,50 +74,30 @@ export default function Dashboard() {
       {notebooks.length === 0 ? (
         <div className="card p-12 text-center">
           <BookOpen className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-display font-semibold text-gray-900 dark:text-white mb-2">
-            No notebooks yet
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Create your first notebook to start learning
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn-primary inline-flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Notebook</span>
+          <h3 className="text-lg font-display font-semibold text-gray-900 dark:text-white mb-2">No notebooks yet</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Create your first notebook to start learning</p>
+          <button onClick={() => setShowCreateModal(true)} className="btn-primary inline-flex items-center space-x-2">
+            <Plus className="w-4 h-4" /><span>Create Notebook</span>
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
             {notebooks.map((notebook) => (
-              <motion.div
-                key={notebook.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="card p-6 relative group"
-              >
-                {/* Pin Badge */}
+              <motion.div key={notebook.id}
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                className="card p-6 relative group">
                 {notebook.is_pinned && (
                   <div className="absolute top-3 right-3">
                     <Pin className="w-4 h-4 text-gray-400 fill-current" />
                   </div>
                 )}
-
-                {/* Notebook Header */}
                 <div className="mb-4">
                   {editingId === notebook.id ? (
-                    <input
-                      type="text"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
+                    <input type="text" value={editingName} onChange={(e) => setEditingName(e.target.value)}
                       onBlur={() => handleEdit(notebook.id)}
                       onKeyPress={(e) => e.key === 'Enter' && handleEdit(notebook.id)}
-                      className="input text-lg font-display font-semibold"
-                      autoFocus
-                    />
+                      className="input text-lg font-display font-semibold" autoFocus />
                   ) : (
                     <h3 className="text-lg font-display font-semibold text-gray-900 dark:text-white mb-1 pr-8">
                       {notebook.name}
@@ -146,11 +107,9 @@ export default function Dashboard() {
                     {notebook.createdAt ? new Date(notebook.createdAt).toLocaleDateString() : 'Unknown'}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Last review on：{notebook.last_tested_at ? new Date(notebook.last_tested_at).toLocaleDateString() : 'Never'}
+                    Last review：{notebook.last_tested_at ? new Date(notebook.last_tested_at).toLocaleDateString() : 'Never'}
                   </p>
                 </div>
-
-                {/* Stats */}
                 <div className="grid grid-cols-3 gap-2 mb-4 py-4 border-y border-gray-100 dark:border-gray-700">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-gray-900 dark:text-white">{notebook.total_cards}</div>
@@ -165,48 +124,27 @@ export default function Dashboard() {
                     <div className="text-xs text-gray-500 dark:text-gray-400">Familiar</div>
                   </div>
                 </div>
-
-                {/* Actions */}
                 <div className="flex items-center justify-between">
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => togglePin(notebook.id, notebook.is_pinned)}
-                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                      title="Toggle pin"
-                    >
+                  <div className="flex space-x-1">
+                    <button onClick={() => togglePin(notebook.id, notebook.is_pinned)}
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" title="Toggle pin">
                       <Pin className={`w-4 h-4 ${notebook.is_pinned ? 'fill-current' : ''}`} />
                     </button>
-                    <button
-                      onClick={() => {
-                        setEditingId(notebook.id)
-                        setEditingName(notebook.name)
-                      }}
-                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                      title="Rename"
-                    >
+                    <button onClick={() => { setEditingId(notebook.id); setEditingName(notebook.name) }}
+                      className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" title="Rename">
                       <Edit2 className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(notebook.id)}
-                      className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                      title="Delete"
-                    >
+                    <button onClick={() => handleDelete(notebook.id)}
+                      className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                   <div className="flex space-x-2">
-                    <button
-                      onClick={() => navigate(`/notebook/${notebook.id}`)}
-                      className="btn-secondary text-sm py-1.5"
-                    >
+                    <button onClick={() => navigate(`/notebook/${notebook.id}`)} className="btn-secondary text-sm py-1.5">
                       Manage
                     </button>
-                    <button
-                      onClick={() => startQuiz(notebook.id)}
-                      className="btn-primary text-sm py-1.5 flex items-center space-x-1"
-                    >
-                      <PlayCircle className="w-4 h-4" />
-                      <span>Quiz</span>
+                    <button onClick={() => startQuiz(notebook.id)} className="btn-primary text-sm py-1.5 flex items-center space-x-1">
+                      <PlayCircle className="w-4 h-4" /><span>Quiz</span>
                     </button>
                   </div>
                 </div>
@@ -216,63 +154,33 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full"
-          >
-            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">
-              Create New Notebook
-            </h2>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-4">Create New Notebook</h2>
             <form onSubmit={handleCreate}>
-              <input
-                type="text"
-                value={newNotebookName}
-                onChange={(e) => setNewNotebookName(e.target.value)}
-                placeholder="Notebook name"
-                className="input mb-4"
-                autoFocus
-              />
+              <input type="text" value={newNotebookName} onChange={(e) => setNewNotebookName(e.target.value)}
+                placeholder="Notebook name" className="input mb-4" autoFocus />
               <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false)
-                    setNewNotebookName('')
-                  }}
-                  className="btn-secondary flex-1"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary flex-1">
-                  Create
-                </button>
+                <button type="button" onClick={() => { setShowCreateModal(false); setNewNotebookName('') }}
+                  className="btn-secondary flex-1">Cancel</button>
+                <button type="submit" className="btn-primary flex-1">Create</button>
               </div>
             </form>
           </motion.div>
         </div>
       )}
-      <ConfirmModal
-        isOpen={confirmModal.open}
-        title="Delete Notebook"
+
+      <ConfirmModal isOpen={confirmModal.open} title="Delete Notebook"
         message="Are you sure you want to delete this notebook? All cards will be deleted and this cannot be undone."
         confirmLabel="Delete"
         confirmClass="bg-red-500 hover:bg-red-700 text-white rounded-md px-4 py-2 transition-colors"
-        onConfirm={async () => {
-          await deleteNotebook(confirmModal.id)
-          setConfirmModal({ open: false, id: null })
-        }}
-        onCancel={() => setConfirmModal({ open: false, id: null })}
-      />
-      <AddCardModal
-        isOpen={showAddCardModal}
-        onClose={() => setShowAddCardModal(false)}
-        onSubmit={handleAddCard}
-        notebooks={notebooks}
-      />
+        onConfirm={async () => { await deleteNotebook(confirmModal.id); setConfirmModal({ open: false, id: null }) }}
+        onCancel={() => setConfirmModal({ open: false, id: null })} />
+
+      <AddCardModal isOpen={showAddCardModal} onClose={() => setShowAddCardModal(false)}
+        onSubmit={handleAddCard} notebooks={notebooks} />
     </div>
   )
 }

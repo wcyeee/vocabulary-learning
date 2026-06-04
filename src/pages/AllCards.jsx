@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, ArrowUpDown, Pencil, Trash2, Download, CheckSquare, Square, X } from 'lucide-react'
+import { Search, Pencil, Trash2, Download, CheckSquare, Square, X } from 'lucide-react'
 import {
   collection, getDocs, query, orderBy, doc, updateDoc, deleteDoc,
   writeBatch
@@ -10,13 +10,27 @@ import SpeakButton from '../components/SpeakButton'
 import ConfirmModal from '../components/ConfirmModal'
 import ExportModal from '../components/ExportModal'
 
+const SORT_OPTIONS = [
+  { value: 'alpha',   label: 'Alphabetical' },
+  { value: 'date',    label: 'Date Added' },
+  { value: 'review',  label: 'Days to Review' },
+  { value: 'status',  label: 'Status' },
+]
+
 export default function AllCards() {
   const [cards, setCards] = useState([])
   const [filteredCards, setFilteredCards] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('alpha')
-  const [sortOrder, setSortOrder] = useState('asc')
+
+  // ── Initialise sort state from localStorage ──────────────────────────────
+  const [sortBy, setSortBy] = useState(
+    () => localStorage.getItem('vocab_allcards_sort') || 'alpha'
+  )
+  const [sortOrder, setSortOrder] = useState(
+    () => localStorage.getItem('vocab_allcards_order') || 'asc'
+  )
+
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingCard, setEditingCard] = useState(null)
   const [editEnglish, setEditEnglish] = useState('')
@@ -25,7 +39,7 @@ export default function AllCards() {
   const [confirmModal, setConfirmModal] = useState({ open: false, card: null })
   const [showExportModal, setShowExportModal] = useState(false)
 
-  // Bulk selection state
+  // Bulk selection
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedCardIds, setSelectedCardIds] = useState([])
   const [showMoveModal, setShowMoveModal] = useState(false)
@@ -33,13 +47,12 @@ export default function AllCards() {
   const [allNotebooks, setAllNotebooks] = useState([])
   const [moveLoading, setMoveLoading] = useState(false)
 
-  useEffect(() => {
-    fetchAllCards()
-  }, [])
+  // ── Persist sort preferences ─────────────────────────────────────────────
+  useEffect(() => { localStorage.setItem('vocab_allcards_sort',  sortBy)    }, [sortBy])
+  useEffect(() => { localStorage.setItem('vocab_allcards_order', sortOrder) }, [sortOrder])
 
-  useEffect(() => {
-    filterAndSortCards()
-  }, [cards, searchQuery, sortBy, sortOrder])
+  useEffect(() => { fetchAllCards() }, [])
+  useEffect(() => { filterAndSortCards() }, [cards, searchQuery, sortBy, sortOrder])
 
   const fetchAllCards = async () => {
     try {
@@ -47,8 +60,6 @@ export default function AllCards() {
       const notebooksSnap = await getDocs(collection(db, 'notebooks'))
       const notebooks = {}
       notebooksSnap.docs.forEach(d => { notebooks[d.id] = d.data().name })
-
-      // Save notebooks list for move modal
       setAllNotebooks(notebooksSnap.docs.map(d => ({ id: d.id, ...d.data() })))
 
       let allCards = []
@@ -56,13 +67,13 @@ export default function AllCards() {
         const cardsSnap = await getDocs(
           query(collection(db, 'notebooks', notebookId, 'cards'), orderBy('createdAt', 'desc'))
         )
-        const cards = cardsSnap.docs.map(d => ({
+        const c = cardsSnap.docs.map(d => ({
           id: d.id,
           ...d.data(),
-          notebookId: notebookId,
+          notebookId,
           notebook: { name: notebookName }
         }))
-        allCards = [...allCards, ...cards]
+        allCards = [...allCards, ...c]
       }
       setCards(allCards)
     } catch (err) {
@@ -79,9 +90,8 @@ export default function AllCards() {
     const reviewDate = new Date(card.next_review_at)
     if (isNaN(reviewDate.getTime())) return 0
     const reviewDay = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate())
-    const diffInDays = Math.ceil((reviewDay - today) / (1000 * 60 * 60 * 24))
-    if (isNaN(diffInDays)) return 0
-    return diffInDays < 0 ? 0 : diffInDays
+    const diff = Math.ceil((reviewDay - today) / (1000 * 60 * 60 * 24))
+    return isNaN(diff) || diff < 0 ? 0 : diff
   }
 
   const handleEditOpen = (card) => {
@@ -92,9 +102,7 @@ export default function AllCards() {
     setShowEditModal(true)
   }
 
-  const handleDelete = (card) => {
-    setConfirmModal({ open: true, card })
-  }
+  const handleDelete = (card) => { setConfirmModal({ open: true, card }) }
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
@@ -114,41 +122,49 @@ export default function AllCards() {
   const filterAndSortCards = () => {
     let filtered = [...cards]
     if (searchQuery) {
-      const queryStr = searchQuery.toLowerCase()
+      const q = searchQuery.toLowerCase()
       filtered = filtered.filter(card =>
-        (card.english?.toLowerCase() || '').includes(queryStr) ||
-        (card.chinese?.toLowerCase() || '').includes(queryStr) ||
-        (card.part_of_speech?.toLowerCase() || '').includes(queryStr)
+        (card.english?.toLowerCase() || '').includes(q) ||
+        (card.chinese?.toLowerCase() || '').includes(q) ||
+        (card.part_of_speech?.toLowerCase() || '').includes(q)
       )
     }
     if (sortBy === 'alpha') {
       filtered.sort((a, b) => {
-        const result = (a.english || '').localeCompare(b.english || '')
-        return sortOrder === 'asc' ? result : -result
+        const r = (a.english || '').localeCompare(b.english || '')
+        return sortOrder === 'asc' ? r : -r
       })
     } else if (sortBy === 'date') {
       filtered.sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0)
-        const dateB = new Date(b.createdAt || 0)
-        const result = dateB - dateA
-        return sortOrder === 'asc' ? result : -result
+        const r = new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+        return sortOrder === 'asc' ? r : -r
       })
     } else if (sortBy === 'review') {
       filtered.sort((a, b) => {
-        const result = getDaysUntilReview(a) - getDaysUntilReview(b)
-        return sortOrder === 'asc' ? result : -result
+        const r = getDaysUntilReview(a) - getDaysUntilReview(b)
+        return sortOrder === 'asc' ? r : -r
       })
     } else if (sortBy === 'status') {
       filtered.sort((a, b) => {
-        const statusOrder = { 'new': 0, 'normal': 1, 'familiar': 2 }
-        const result = (statusOrder[a.status] ?? 0) - (statusOrder[b.status] ?? 0)
-        return sortOrder === 'asc' ? result : -result
+        const order = { new: 0, normal: 1, familiar: 2 }
+        const r = (order[a.status] ?? 0) - (order[b.status] ?? 0)
+        return sortOrder === 'asc' ? r : -r
       })
     }
     setFilteredCards(filtered)
   }
 
-  // Bulk selection helpers
+  // ── Sort chip handler ────────────────────────────────────────────────────
+  const handleSortChip = (value) => {
+    if (sortBy === value) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(value)
+      setSortOrder('asc')
+    }
+  }
+
+  // ── Bulk selection helpers ───────────────────────────────────────────────
   const toggleSelectCard = (cardId) => {
     setSelectedCardIds(prev =>
       prev.includes(cardId) ? prev.filter(id => id !== cardId) : [...prev, cardId]
@@ -185,27 +201,16 @@ export default function AllCards() {
     if (!targetNotebookId) return
     setMoveLoading(true)
     try {
-      const targetNotebook = allNotebooks.find(n => n.id === targetNotebookId)
       const batch = writeBatch(db)
-
       for (const cardId of selectedCardIds) {
         const card = cards.find(c => c.id === cardId)
         if (!card) continue
-
-        // Strip local-only display fields before writing
         const { id: _id, notebookId: _nid, notebook: _nb, ...cardData } = card
-
-        // Create new doc in target notebook (all review state preserved)
         const newRef = doc(collection(db, 'notebooks', targetNotebookId, 'cards'))
         batch.set(newRef, { ...cardData, notebook_id: targetNotebookId })
-
-        // Delete original doc
         batch.delete(doc(db, 'notebooks', card.notebookId, 'cards', cardId))
       }
-
       await batch.commit()
-
-      // Update local state: remove moved cards from current list
       setCards(prev => prev.filter(c => !selectedCardIds.includes(c.id)))
     } catch (err) {
       console.error('Move failed:', err)
@@ -222,7 +227,7 @@ export default function AllCards() {
 
   return (
     <div>
-      <div className="mb-8">
+      <div className="mt-6 mb-8">
         <h1 className="text-3xl font-display font-bold text-gray-900 dark:text-white mb-2">
           All Vocabulary
         </h1>
@@ -231,93 +236,117 @@ export default function AllCards() {
         </p>
       </div>
 
-      <div className="card p-6 mb-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by English, Chinese, or part of speech..."
-              className="input pl-10"
-            />
-          </div>
-          <div className="flex items-center flex-wrap gap-2">
-            <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-md transition-colors"
-              title={sortOrder === 'asc' ? 'Sort Descending' : 'Sort Ascending'}
-            >
-              <ArrowUpDown className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            </button>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="input"
-            >
-              <option value="alpha">Alphabetical</option>
-              <option value="date">Date Added</option>
-              <option value="review">Days Until Review</option>
-              <option value="status">Status</option>
-            </select>
+      {/* ── Filter / Sort card ────────────────────────────────────────────── */}
+      <div className="card p-5 mb-6">
+        {!selectionMode ? (
+          /* ── 正常模式：單行 搜尋 + Sort + 按鈕 ── */
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            {/* 搜尋欄 */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search by English, Chinese, or part of speech…"
+                className="input pl-9 py-1.5 text-sm"
+              />
+            </div>
 
-            {/* Select / selection action buttons */}
-            {!selectionMode ? (
-              <>
-                <button
-                  onClick={() => setSelectionMode(true)}
-                  className="btn-secondary flex items-center space-x-2 whitespace-nowrap"
-                >
-                  <CheckSquare className="w-4 h-4" />
-                  <span>Select</span>
-                </button>
-                <button
-                  onClick={() => setShowExportModal(true)}
-                  className="btn-secondary flex items-center space-x-2"
-                  title="Export cards"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Export</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                  {selectedCardIds.length} selected
-                </span>
-                <button onClick={toggleSelectAll} className="btn-secondary text-sm py-1.5 whitespace-nowrap">
-                  {selectedCardIds.length === filteredCards.length ? 'Deselect All' : 'Select All'}
-                </button>
-                <button
-                  onClick={() => setConfirmBulkDelete(true)}
-                  disabled={selectedCardIds.length === 0}
-                  className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  Delete ({selectedCardIds.length})
-                </button>
-                <button
-                  onClick={() => setShowMoveModal(true)}
-                  disabled={selectedCardIds.length === 0}
-                  className="btn-primary text-sm py-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  Move ({selectedCardIds.length})
-                </button>
-                <button
-                  onClick={exitSelectionMode}
-                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </>
-            )}
+            {/* 第二行（手機）/ 右側群組（桌面）*/}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+              {/* Sort */}
+              <select
+                value={sortBy}
+                onChange={e => { setSortBy(e.target.value); setSortOrder('asc') }}
+                className="input py-1.5 text-sm w-auto"
+              >
+                {SORT_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                className="btn-secondary px-2.5 py-1.5 text-sm flex-shrink-0"
+              >
+                {sortOrder === 'asc' ? '↑' : '↓'}
+              </button> 
+            </div>
+                
+            {/* 手機第三行 */}
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+              <button
+                onClick={() => setSelectionMode(true)}
+                className="btn-secondary flex items-center gap-1.5 whitespace-nowrap py-1.5 text-sm"
+              >
+                <CheckSquare className="w-4 h-4" />
+                <span>Select</span>
+              </button>
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="btn-secondary flex items-center gap-1.5 whitespace-nowrap py-1.5 text-sm"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+            </div>
+
           </div>
-        </div>
-        <div className="mt-3 text-sm text-gray-600 dark:text-gray-400">
-          Showing {filteredCards.length} of {cards.length} cards
-        </div>
+        ) : (
+          /* ── 選取模式：兩行（手機）/ 單行（桌面） ── */
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            {/* 搜尋欄 */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search by English, Chinese, or part of speech…"
+                className="input pl-9 py-1.5 text-sm"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0">
+              {/* 獨立叉叉 + count */}
+              <button
+                onClick={exitSelectionMode}
+                className="text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 transition-colors p-0.5"
+                title="Exit selection"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200 whitespace-nowrap">
+                {selectedCardIds.length} selected
+              </span>
+
+              <button onClick={toggleSelectAll} className="btn-secondary text-sm py-1.5 whitespace-nowrap">
+                {selectedCardIds.length === filteredCards.length ? 'Deselect All' : 'Select All'}
+              </button>
+              <button
+                onClick={() => setConfirmBulkDelete(true)}
+                disabled={selectedCardIds.length === 0}
+                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                Delete ({selectedCardIds.length})
+              </button>
+              <button
+                onClick={() => setShowMoveModal(true)}
+                disabled={selectedCardIds.length === 0}
+                className="btn-primary text-sm py-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                Move ({selectedCardIds.length})
+              </button>
+            </div>
+          </div>
+        )}
+
+      <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        Showing {filteredCards.length} of {cards.length} cards
       </div>
+    </div>
 
+      {/* ── Card grid ─────────────────────────────────────────────────────── */}
       {filteredCards.length === 0 ? (
         <div className="card p-12 text-center">
           <p className="text-gray-600 dark:text-gray-400">
@@ -341,7 +370,6 @@ export default function AllCards() {
                 `}
                 onClick={selectionMode ? () => toggleSelectCard(card.id) : undefined}
               >
-                {/* Checkbox indicator */}
                 {selectionMode && (
                   <div className="absolute top-3 left-3 z-10">
                     {isSelected
@@ -388,9 +416,9 @@ export default function AllCards() {
                         </span>
                       )}
                       <span className={`text-xs px-2 py-1 rounded ${
-                        card.status === 'new' ? 'bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 text-blue-700 dark:text-blue-300' :
-                        card.status === 'normal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' :
-                        'bg-green-50 dark:bg-green-900 dark:bg-opacity-30 text-green-700 dark:text-green-300'
+                        card.status === 'new'      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+                        card.status === 'normal'   ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' :
+                                                     'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
                       }`}>
                         {card.status}
                       </span>
@@ -403,7 +431,7 @@ export default function AllCards() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* ── Edit Modal ────────────────────────────────────────────────────── */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <motion.div
@@ -415,15 +443,15 @@ export default function AllCards() {
             <form onSubmit={handleEditSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">English</label>
-                <input type="text" value={editEnglish} onChange={(e) => setEditEnglish(e.target.value)} className="input" required />
+                <input type="text" value={editEnglish} onChange={e => setEditEnglish(e.target.value)} className="input" required />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Part of Speech</label>
-                <input type="text" value={editPartOfSpeech} onChange={(e) => setEditPartOfSpeech(e.target.value)} className="input" />
+                <input type="text" value={editPartOfSpeech} onChange={e => setEditPartOfSpeech(e.target.value)} className="input" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chinese</label>
-                <input type="text" value={editChinese} onChange={(e) => setEditChinese(e.target.value)} className="input" required />
+                <input type="text" value={editChinese} onChange={e => setEditChinese(e.target.value)} className="input" required />
               </div>
               <div className="flex space-x-3">
                 <button type="button" onClick={() => setShowEditModal(false)} className="btn-secondary flex-1">Cancel</button>
@@ -434,7 +462,7 @@ export default function AllCards() {
         </div>
       )}
 
-      {/* Move Modal */}
+      {/* ── Move Modal ────────────────────────────────────────────────────── */}
       {showMoveModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <motion.div
@@ -442,9 +470,7 @@ export default function AllCards() {
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-sm w-full"
           >
-            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-2">
-              Move Cards
-            </h2>
+            <h2 className="text-xl font-display font-bold text-gray-900 dark:text-white mb-2">Move Cards</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Move {selectedCardIds.length} card(s) to a notebook. Review progress will be preserved.
             </p>
@@ -454,7 +480,7 @@ export default function AllCards() {
               <select
                 className="input mb-4"
                 defaultValue=""
-                onChange={(e) => { if (e.target.value) handleMoveCards(e.target.value) }}
+                onChange={e => { if (e.target.value) handleMoveCards(e.target.value) }}
                 disabled={moveLoading}
               >
                 <option value="" disabled>Select target notebook…</option>
@@ -463,18 +489,14 @@ export default function AllCards() {
                 ))}
               </select>
             )}
-            <button
-              onClick={() => setShowMoveModal(false)}
-              className="btn-secondary w-full"
-              disabled={moveLoading}
-            >
+            <button onClick={() => setShowMoveModal(false)} className="btn-secondary w-full" disabled={moveLoading}>
               {moveLoading ? 'Moving…' : 'Cancel'}
             </button>
           </motion.div>
         </div>
       )}
 
-      {/* Single card delete confirm */}
+      {/* Single card delete */}
       <ConfirmModal
         isOpen={confirmModal.open}
         title="Delete Card"
@@ -490,7 +512,7 @@ export default function AllCards() {
         onCancel={() => setConfirmModal({ open: false, card: null })}
       />
 
-      {/* Bulk delete confirm */}
+      {/* Bulk delete */}
       <ConfirmModal
         isOpen={confirmBulkDelete}
         title={`Delete ${selectedCardIds.length} Cards`}
