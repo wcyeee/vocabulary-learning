@@ -218,7 +218,7 @@ export default function NotebookDetail() {
               {/* 第一行（手機）/ 最後一個（桌面） */}
               <button
                 onClick={() => setShowAddModal(true)}
-                className="btn-primary flex items-center justify-center gap-1.5 w-auto sm:order-last"
+                className="btn-primary flex items-center justify-center gap-1.5 w-fit sm:order-last"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Card</span>
@@ -234,18 +234,18 @@ export default function NotebookDetail() {
                   <span>Select</span>
                 </button>
                 <button
-                  onClick={() => setShowBatchModal(true)}
-                  className="btn-secondary flex items-center gap-1.5"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Batch Add</span>
-                </button>
-                <button
                   onClick={() => setShowExportModal(true)}
                   className="btn-secondary flex items-center gap-1.5"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export</span>
+                </button>
+                <button
+                  onClick={() => setShowBatchModal(true)}
+                  className="btn-secondary flex items-center gap-1.5"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Batch Add</span>
                 </button>
               </div>
             </div>
